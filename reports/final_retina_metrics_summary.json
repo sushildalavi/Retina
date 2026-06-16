@@ -1,0 +1,167 @@
+{
+  "dataset": {
+    "name": "flickr8k",
+    "images": 8000,
+    "captions": 40000,
+    "splits": {
+      "train": 6000,
+      "test": 1000,
+      "dev": 1000
+    },
+    "sample_size": "full",
+    "requested_sample_size": "full",
+    "metadata_path": "data/processed/retina_metadata.jsonl",
+    "image_artifact_path": "data/artifacts/images"
+  },
+  "model": {
+    "name": "openai/clip-vit-base-patch32",
+    "device": "mps"
+  },
+  "retrieval": {
+    "recall_at_1": 0.307825,
+    "recall_at_5": 0.542425,
+    "recall_at_10": 0.641925,
+    "mrr": 0.4081944525241852,
+    "median_rank": 2.0,
+    "map_at_10": 0.4081944543650794,
+    "ndcg_at_10": 0.46386424661409603,
+    "faiss_search_latency_p95_ms": 0.30779314041137695,
+    "end_to_end_text_search_latency_p95_ms": 14.701874752063304
+  },
+  "recommendation": {
+    "text_to_image": {
+      "precision_at_1": 0.307825,
+      "precision_at_5": 0.10848499999999998,
+      "precision_at_10": 0.0641925,
+      "recall_at_1": 0.307825,
+      "recall_at_5": 0.542425,
+      "recall_at_10": 0.641925,
+      "mrr": 0.4081944543650794,
+      "map_at_10": 0.4081944543650794,
+      "ndcg_at_10": 0.46386424661409603,
+      "coverage_at_10": 0.9865,
+      "intra_list_diversity": 0.29536608647853135,
+      "average_similarity_score": 0.30919449791256337,
+      "latency_p50_ms": 0.2491249442100525,
+      "latency_p95_ms": 0.3028750717639923,
+      "queries": 40000,
+      "failures": 14323
+    },
+    "profile": {
+      "precision_at_1": 0.4435,
+      "precision_at_5": 0.13864999999999997,
+      "precision_at_10": 0.0781125,
+      "recall_at_1": 0.4435,
+      "recall_at_5": 0.69325,
+      "recall_at_10": 0.781125,
+      "mrr": 0.5494467261904763,
+      "map_at_10": 0.5494467261904763,
+      "ndcg_at_10": 0.6049739582224133,
+      "coverage_at_10": 0.92125,
+      "intra_list_diversity": 0.28352867195755244,
+      "average_similarity_score": 0.32660938153006136,
+      "latency_p50_ms": 0.2455420345067978,
+      "latency_p95_ms": 0.27779099345207214,
+      "queries": 8000
+    },
+    "image_to_image": {
+      "queries": 8000,
+      "latency_p50_ms": 0.24750001728534698,
+      "latency_p95_ms": 0.3050503730773926,
+      "average_similarity_score": 0.8091278676141053,
+      "qualitative_only": true
+    }
+  },
+  "random_baseline": {
+    "dataset_name": "flickr8k",
+    "sample_size": 8000,
+    "queries": 40000,
+    "candidate_images": 8000,
+    "seed": 42,
+    "method": "random",
+    "ndcg_at_10": 0.0005510213844842314,
+    "recall_at_1": 0.000175,
+    "recall_at_5": 0.00055,
+    "recall_at_10": 0.0012,
+    "mrr": 0.0012134587159380317,
+    "median_rank": 4002.0,
+    "latency_p50_ms": 0.0,
+    "latency_p95_ms": 0.0
+  },
+  "runtime": {
+    "image_embeddings_per_sec": 38.817491318933634,
+    "text_embeddings_per_sec": 194.08745659466817,
+    "search_queries_per_sec": 83.05392785111384,
+    "image_embedding_p95_ms": 75.46626069233753,
+    "text_embedding_p95_ms": 27.89644748554565,
+    "end_to_end_search_p95_ms": 14.701874752063304
+  },
+  "failure_analysis": {
+    "failure_count": 14323,
+    "query_count": 40000,
+    "dominant_categories": [
+      "multiple_valid_matches",
+      "visually_similar_negative"
+    ],
+    "summary_path": "reports/flickr8k_full_retrieval_failures.md",
+    "raw_path": "reports/flickr8k_full_retrieval_failures.jsonl"
+  },
+  "api_command": "make api",
+  "demo_command": "make demo",
+  "resume_claim": "Built Retina, a Mac-local content-based visual recommendation system using CLIP ViT-B/32 embeddings, FAISS CPU indexing, and FastAPI/Gradio serving; evaluated on full Flickr8k (8K images / 40K captions) with 0.642 Recall@10, 0.408 MRR, 0.464 nDCG@10, and 14.7 ms p95 end-to-end search latency, outperforming random Recall@10 by 535x.",
+  "must_not_claim": [
+    "collaborative filtering",
+    "personalized ranking from user behavior",
+    "production deployment",
+    "fine-tuned CLIP",
+    "state-of-the-art performance"
+  ],
+  "second_model_baseline": {
+    "status": "measured",
+    "model_name": "openai/clip-vit-large-patch14",
+    "sample_size": 500,
+    "device": "mps",
+    "recall_at_1": 0.6624,
+    "recall_at_5": 0.9096,
+    "recall_at_10": 0.9552,
+    "mrr": 0.7673609256744385,
+    "ndcg_at_10": 0.7891130309776321,
+    "image_embeddings_per_sec": 2.4347797323306373,
+    "end_to_end_search_p95_ms": 114.11076041986234
+  },
+  "scaling_experiment": [
+    {
+      "sample_size": 500,
+      "image_count": 500,
+      "caption_count": 2500,
+      "recall_at_10": 0.9376,
+      "mrr": 0.7416639924049377,
+      "search_latency_p95_ms": 14.53702148864977,
+      "image_embeddings_per_sec": 58.07424187912521,
+      "total_runtime_seconds": 8.609668999910355,
+      "index_size_bytes": 1024045
+    },
+    {
+      "sample_size": 1000,
+      "image_count": 1000,
+      "caption_count": 5000,
+      "recall_at_10": 0.8836,
+      "mrr": 0.6593074202537537,
+      "search_latency_p95_ms": 16.88386473688297,
+      "image_embeddings_per_sec": 48.02379886678884,
+      "total_runtime_seconds": 20.823009082931094,
+      "index_size_bytes": 2048045
+    },
+    {
+      "sample_size": "full",
+      "image_count": 8000,
+      "caption_count": 40000,
+      "recall_at_10": 0.641925,
+      "mrr": 0.4081944525241852,
+      "search_latency_p95_ms": 14.701874752063304,
+      "image_embeddings_per_sec": 38.817491318933634,
+      "total_runtime_seconds": 206.09265895804856,
+      "index_size_bytes": 16384045
+    }
+  ]
+}

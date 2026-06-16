@@ -15,6 +15,7 @@ dist/
 data/raw/
 data/artifacts/
 data/processed/
+data/tmp_*/
 data/processed/*.npy
 data/processed/*.index
 data/cache/

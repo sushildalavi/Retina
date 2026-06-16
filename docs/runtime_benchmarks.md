@@ -13,8 +13,10 @@ Measured local benchmark:
 - image latency p95: 75.47 ms
 - text latency p50: 21.65 ms
 - text latency p95: 27.90 ms
-- search latency p50: 11.59 ms
-- search latency p95: 14.70 ms
+- FAISS-only search p50: 0.25 ms
+- FAISS-only search p95: 0.31 ms
+- end-to-end text recommendation p50: 11.59 ms
+- end-to-end text recommendation p95: 14.70 ms
 
 Full-benchmark recommendation latencies:
 

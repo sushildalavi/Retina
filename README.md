@@ -89,7 +89,7 @@ Model used:
 
 Benchmark table:
 
-| Dataset | Images | Captions | Model | Device | R@1 | R@5 | R@10 | MRR | nDCG@10 | p95 latency |
+| Dataset | Images | Captions | Model | Device | R@1 | R@5 | R@10 | MRR | nDCG@10 | FAISS-only search p95 |
 | --- | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Flickr8k | 8000 | 40000 | `openai/clip-vit-base-patch32` | `mps` | 0.3078 | 0.5424 | 0.6419 | 0.4082 | 0.4639 | 0.30 ms |
 
@@ -109,7 +109,7 @@ Recommendation modes implemented:
 
 Recommendation metrics:
 
-| Mode | Precision@1 | Recall@1 | Recall@5 | Recall@10 | MRR | nDCG@10 | p95 latency |
+| Mode | Precision@1 | Recall@1 | Recall@5 | Recall@10 | MRR | nDCG@10 | FAISS-only search p95 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Text-to-image | 0.3078 | 0.3078 | 0.5424 | 0.6419 | 0.4082 | 0.4639 | 0.30 ms |
 | Profile recommendations | 0.4435 | 0.4435 | 0.6932 | 0.7811 | 0.5494 | 0.6050 | 0.28 ms |
@@ -122,13 +122,15 @@ Image-to-image recommendations are reported as qualitative/latency-only behavior
 
 Runtime:
 
+The embedding throughput and embedding latency numbers below come from the smaller embedding benchmark sample, while the full-benchmark search latency is shown in the table above.
+
 | Metric | Value |
 | --- | ---: |
 | Image embeddings/sec | 31.92 |
 | Text embeddings/sec | 56.14 |
 | Search queries/sec | 83.05 |
-| Search latency p50 | 11.59 ms |
-| Search latency p95 | 14.70 ms |
+| End-to-end search latency p50 | 11.59 ms |
+| End-to-end search latency p95 | 14.70 ms |
 | Image embedding p50 | 17.88 ms |
 | Image embedding p95 | 75.47 ms |
 | Text embedding p50 | 21.65 ms |
@@ -154,6 +156,9 @@ Report paths:
 - `reports/flickr8k_full_random_baseline.json`
 - `reports/flickr8k_full_runtime_benchmark.json`
 - `reports/flickr8k_full_retrieval_failures.jsonl`
+- `reports/final_retina_metrics_summary.json`
+- `reports/model_baseline_comparison.json`
+- `reports/scaling_experiment.json`
 
 ## Limitations
 
@@ -165,6 +170,14 @@ Report paths:
 - the synthetic 50-sample dataset remains the fastest smoke test
 - the full Flickr8k benchmark was completed locally on MPS
 - first run may need CLIP weights downloaded
+
+## Additional Experiments
+
+- second-model baseline on 500 images: `openai/clip-vit-large-patch14` reached Recall@10 0.9552, but end-to-end search p95 rose to 114.11 ms
+- scaling experiment with CLIP ViT-B/32:
+  - 500 images: Recall@10 0.9376, MRR 0.7417, p95 14.54 ms
+  - 1000 images: Recall@10 0.8836, MRR 0.6593, p95 16.88 ms
+  - 8000 images: Recall@10 0.6419, MRR 0.4082, p95 14.70 ms
 
 ## Resume-Safe Summary
 

@@ -1,0 +1,39 @@
+{
+  "model_name": "openai/clip-vit-base-patch32",
+  "device": "mps",
+  "rows": [
+    {
+      "sample_size": 500,
+      "image_count": 500,
+      "caption_count": 2500,
+      "recall_at_10": 0.9376,
+      "mrr": 0.7416639924049377,
+      "search_latency_p95_ms": 14.53702148864977,
+      "image_embeddings_per_sec": 58.07424187912521,
+      "total_runtime_seconds": 8.609668999910355,
+      "index_size_bytes": 1024045
+    },
+    {
+      "sample_size": 1000,
+      "image_count": 1000,
+      "caption_count": 5000,
+      "recall_at_10": 0.8836,
+      "mrr": 0.6593074202537537,
+      "search_latency_p95_ms": 16.88386473688297,
+      "image_embeddings_per_sec": 48.02379886678884,
+      "total_runtime_seconds": 20.823009082931094,
+      "index_size_bytes": 2048045
+    },
+    {
+      "sample_size": 8000,
+      "image_count": 8000,
+      "caption_count": 40000,
+      "recall_at_10": 0.641925,
+      "mrr": 0.4081944525241852,
+      "search_latency_p95_ms": 14.701874752063304,
+      "image_embeddings_per_sec": 38.817491318933634,
+      "total_runtime_seconds": 206.09265895804856,
+      "index_size_bytes": 16384045
+    }
+  ]
+}

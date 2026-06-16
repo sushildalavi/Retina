@@ -1,0 +1,30 @@
+{
+  "status": "measured",
+  "sample_size": 500,
+  "comparison": [
+    {
+      "model_name": "openai/clip-vit-base-patch32",
+      "device": "mps",
+      "sample_size": 500,
+      "recall_at_1": 0.6432,
+      "recall_at_5": 0.872,
+      "recall_at_10": 0.9376,
+      "mrr": 0.7416639924049377,
+      "ndcg_at_10": 0.7891130309776321,
+      "image_embeddings_per_sec": 58.07424187912521,
+      "end_to_end_search_p95_ms": 14.53702148864977
+    },
+    {
+      "model_name": "openai/clip-vit-large-patch14",
+      "device": "mps",
+      "sample_size": 500,
+      "recall_at_1": 0.6624,
+      "recall_at_5": 0.9096,
+      "recall_at_10": 0.9552,
+      "mrr": 0.7673609256744385,
+      "ndcg_at_10": 0.8134588312468383,
+      "image_embeddings_per_sec": 2.4347797323306373,
+      "end_to_end_search_p95_ms": 114.11076041986234
+    }
+  ]
+}

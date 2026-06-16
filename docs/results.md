@@ -15,8 +15,8 @@ Retrieval metrics:
 - MRR: 0.4082
 - nDCG@10: 0.4639
 - median rank: 1.0
-- query latency p50: 0.25 ms
-- query latency p95: 0.31 ms
+- FAISS-only search p50: 0.25 ms
+- FAISS-only search p95: 0.31 ms
 
 Random baseline:
 
@@ -41,15 +41,15 @@ Profile recommendation metrics:
 - Recall@10: 0.7811
 - MRR: 0.5494
 - nDCG@10: 0.6050
-- p95 latency: 0.28 ms
+- FAISS-only search p95: 0.28 ms
 
 Runtime metrics:
 
 - image embeddings/sec: 31.92
 - text embeddings/sec: 56.14
 - search queries/sec: 83.05
-- search latency p50: 11.59 ms
-- search latency p95: 14.70 ms
+- end-to-end search latency p50: 11.59 ms
+- end-to-end search latency p95: 14.70 ms
 - image embedding p50: 17.88 ms
 - image embedding p95: 75.47 ms
 - text embedding p50: 21.65 ms
