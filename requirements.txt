@@ -1,0 +1,12 @@
+numpy
+pandas
+Pillow
+PyYAML
+torch
+transformers
+faiss-cpu
+fastapi
+gradio
+uvicorn
+pytest
+

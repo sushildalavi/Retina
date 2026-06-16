@@ -1,0 +1,26 @@
+project:
+  name: Retina
+  subtitle: Visual intelligence search engine for image-text retrieval, semantic recommendations, CLIP embeddings, FAISS indexing, evaluation, and local serving.
+
+dataset:
+  input_manifest: data/raw/captions.csv
+  output_dir: data/processed
+  sample_limit: null
+  seed: 42
+  split_ratios: [0.8, 0.1, 0.1]
+
+model:
+  name: openai/clip-vit-base-patch32
+  batch_size: 16
+  device: auto
+
+artifacts:
+  embeddings_dir: data/processed/embeddings
+  index_path: data/processed/index/retina_image_index.faiss
+  index_meta_path: data/processed/index/retina_image_index.json
+  metadata_path: data/processed/retina_metadata.csv
+  reports_dir: reports
+
+search:
+  top_k: 10
+
