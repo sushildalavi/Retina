@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.analyze_retrieval_failures import main as analyze_main
+from scripts.analyze_retrieval_failures import classify_failure, main as analyze_main
 
 
 def test_failure_report_schema(tmp_path, monkeypatch):
@@ -28,4 +28,16 @@ def test_failure_report_schema(tmp_path, monkeypatch):
     )
     analyze_main([])
     markdown = (reports_dir / "retrieval_failures.md").read_text()
-    assert "failure_category: no_hit" in markdown
+    assert "failure_category: correct_image_not_in_top_k" in markdown
+
+
+def test_failure_category_heuristics():
+    assert classify_failure("a red car on the street", []) == "correct_image_not_in_top_k"
+    assert classify_failure(
+        "a red car on the street",
+        [{"caption": "a blue car on the street"}],
+    ) in {"color_attribute_mismatch", "object_mismatch", "scene_mismatch", "visually_similar_negative"}
+
+
+def test_failure_category_generic_caption():
+    assert classify_failure("a dog", [{"caption": "a dog"}]) in {"generic_caption", "object_mismatch"}

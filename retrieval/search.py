@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
+import json
 import pandas as pd
 
 from retrieval.vector_index import FaissVectorIndex
@@ -26,7 +27,15 @@ class RetinaSearchEngine:
     ) -> "RetinaSearchEngine":
         from retrieval.clip_encoder import RetinaClipEncoder
 
-        metadata = pd.read_csv(metadata_path)
+        metadata_path = Path(metadata_path)
+        if metadata_path.suffix.lower() in {".jsonl", ".ndjson"}:
+            metadata = pd.read_json(metadata_path, lines=True)
+        else:
+            metadata = pd.read_csv(metadata_path)
+        if "caption" not in metadata.columns and "captions" in metadata.columns:
+            metadata["caption"] = metadata["captions"].apply(
+                lambda value: value[0] if isinstance(value, list) and value else ""
+            )
         encoder = RetinaClipEncoder(model_name=model_name, device=device)
         index = FaissVectorIndex.load(index_path, index_meta_path)
         return cls(encoder=encoder, index=index, metadata=metadata)
@@ -37,6 +46,9 @@ class RetinaSearchEngine:
             if pos < 0:
                 continue
             row = self.metadata.iloc[int(pos)].to_dict()
+            if "caption" not in row and "captions" in row:
+                captions = row["captions"]
+                row["caption"] = captions[0] if isinstance(captions, list) and captions else ""
             row["score"] = float(score)
             row["rank"] = rank
             rows.append(row)

@@ -13,6 +13,7 @@ venv/
 build/
 dist/
 data/raw/
+data/artifacts/
 data/processed/
 data/cache/
 data/*.npy
