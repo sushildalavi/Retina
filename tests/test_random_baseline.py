@@ -46,3 +46,4 @@ def test_random_baseline_writes_report(tmp_path, monkeypatch):
     payload = json.loads((reports_dir / "random_baseline.json").read_text())
     assert payload["method"] == "random"
     assert payload["candidate_images"] == 2
+    assert "ndcg_at_10" in payload

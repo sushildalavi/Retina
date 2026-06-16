@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import time
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -51,25 +52,43 @@ def main() -> None:
                 }
             )
     query_frame = pd.DataFrame(query_rows)
+    text_embeddings = np.load(Path(config["artifacts"]["embeddings_dir"]) / "retina_text_embeddings.npy")
     ranks = []
     latencies = []
     failures = []
-    for _, row in query_frame.iterrows():
-        start = time.perf_counter()
-        results = engine.search_text(row["caption"], top_k=int(config["search"]["top_k"]))
-        latencies.append((time.perf_counter() - start) * 1000.0)
+    top_k = int(config["search"]["top_k"])
+    for idx, row in query_frame.iterrows():
+        batch_start = time.perf_counter()
+        query_embedding = text_embeddings[idx : idx + 1]
+        positions, scores = engine.index.search(query_embedding, top_k=top_k)
+        latencies.append((time.perf_counter() - batch_start) * 1000.0)
+        result_positions = positions[0]
+        result_scores = scores[0]
+        results = []
         rank = 0
-        for result in results:
-            if result["image_id"] == row["image_id"]:
-                rank = int(result["rank"])
-                break
+        for rank_index, (pos, score) in enumerate(zip(result_positions, result_scores), start=1):
+            if pos < 0:
+                continue
+            result = engine._row_to_result(int(pos), float(score), rank_index, "high_clip_similarity_to_text_query")
+            results.append(result)
+            if str(result["image_id"]) == str(row["image_id"]):
+                rank = int(rank_index)
         ranks.append(rank)
         if rank == 0:
+            retrieved_image_ids = [str(result.get("image_id")) for result in results]
+            retrieved_image_paths = [str(result.get("image_path")) for result in results]
+            retrieved_captions = [str(result.get("caption", "")) for result in results]
+            retrieved_scores = [float(result.get("score", 0.0)) for result in results]
             failures.append(
                 {
                     "query_caption": row["caption"],
                     "expected_image_id": row["image_id"],
                     "expected_image_path": row["image_path"],
+                    "retrieved_image_ids": retrieved_image_ids,
+                    "retrieved_image_paths": retrieved_image_paths,
+                    "retrieved_captions": retrieved_captions,
+                    "scores": retrieved_scores,
+                    "rank_of_correct_image": None,
                     "failure_category": "no_hit",
                     "split": row.get("split", "train"),
                     "top_results": results,
@@ -93,7 +112,7 @@ def main() -> None:
     save_json(reports_dir / f"{args.report_prefix}retrieval_eval.json", metrics)
     (reports_dir / f"{args.report_prefix}retrieval_eval.md").write_text(format_report("Retina Retrieval Evaluation", metrics))
     (reports_dir / f"{args.report_prefix}retrieval_failures.jsonl").write_text(
-        "\n".join(json.dumps(item) for item in failures[:20]) + ("\n" if failures else "")
+        "\n".join(json.dumps(item) for item in failures[:50]) + ("\n" if failures else "")
     )
 
 

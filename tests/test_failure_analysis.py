@@ -28,11 +28,11 @@ def test_failure_report_schema(tmp_path, monkeypatch):
     )
     analyze_main([])
     markdown = (reports_dir / "retrieval_failures.md").read_text()
-    assert "failure_category: correct_image_not_in_top_k" in markdown
+    assert "failure_category: exact_target_missing_from_top_k" in markdown
 
 
 def test_failure_category_heuristics():
-    assert classify_failure("a red car on the street", []) == "correct_image_not_in_top_k"
+    assert classify_failure("a red car on the street", []) == "exact_target_missing_from_top_k"
     assert classify_failure(
         "a red car on the street",
         [{"caption": "a blue car on the street"}],

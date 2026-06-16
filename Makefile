@@ -13,7 +13,7 @@ SAMPLE_SIZE_ARG = $(if $(strip $(SAMPLE_SIZE)),--sample-size $(SAMPLE_SIZE),)
 MANIFEST_ARG = $(if $(strip $(MANIFEST)),--manifest $(MANIFEST),)
 OUTPUT_DIR_ARG = $(if $(strip $(OUTPUT_DIR)),--output-dir $(OUTPUT_DIR),)
 
-.PHONY: install test format lint prepare-data embeddings index eval benchmark failures api demo all-local
+.PHONY: install test format lint prepare-data embeddings index eval recommendations random-baseline benchmark failures api demo all-local flickr8k-full-data flickr8k-full-embeddings flickr8k-full-index flickr8k-full-eval flickr8k-full-recommendations flickr8k-full-benchmark flickr8k-full-failures
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -56,3 +56,24 @@ demo:
 
 all-local:
 	$(PYTHON) -m scripts.run_all_local --config $(CONFIG) $(if $(strip $(DATASET)) ,--dataset $(DATASET),) $(HF_DATASET_ARG) $(SAMPLE_SIZE_ARG) $(REPORT_ARG)
+
+flickr8k-full-data:
+	$(PYTHON) -m scripts.prepare_dataset --config $(CONFIG) --dataset hf_flickr8k --hf-dataset intro/flickr8k --sample-size full --report-prefix flickr8k_full_
+
+flickr8k-full-embeddings:
+	$(PYTHON) -m scripts.build_embeddings --config $(CONFIG) --report-prefix flickr8k_full_
+
+flickr8k-full-index:
+	$(PYTHON) -m scripts.build_image_text_index --config $(CONFIG)
+
+flickr8k-full-eval:
+	$(PYTHON) -m scripts.evaluate_retrieval --config $(CONFIG) --report-prefix flickr8k_full_
+
+flickr8k-full-recommendations:
+	$(PYTHON) -m scripts.evaluate_recommendations --config $(CONFIG) --report-prefix flickr8k_full_
+
+flickr8k-full-benchmark:
+	$(PYTHON) -m scripts.benchmark_embedding_runtime --config $(CONFIG) --report-prefix flickr8k_full_
+
+flickr8k-full-failures:
+	$(PYTHON) -m scripts.analyze_retrieval_failures --config $(CONFIG) --report-prefix flickr8k_full_

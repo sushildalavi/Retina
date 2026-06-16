@@ -35,6 +35,8 @@ ACTION_WORDS = {
     "looking",
 }
 
+STOP_WORDS = {"a", "an", "the", "of", "on", "in", "with", "and", "to", "for", "at", "is", "are", "was", "were"}
+
 SCENE_WORDS = {
     "beach",
     "street",
@@ -56,18 +58,25 @@ def classify_failure(query_caption: str, top_results: list[dict]) -> str:
     top_text = " ".join(str(item.get("caption", "")) for item in top_results).lower()
     tokens = {token.strip(".,;:!?") for token in text.split()}
     if not top_results:
-        return "correct_image_not_in_top_k"
-    if len([token for token in tokens if token not in {"a", "an", "the", "of", "on", "in", "with", "and"}]) <= 2:
+        return "exact_target_missing_from_top_k"
+    content_tokens = [token for token in tokens if token not in STOP_WORDS]
+    if len(content_tokens) <= 2:
         return "generic_caption"
     if tokens & COLOR_WORDS and not (set(top_text.split()) & COLOR_WORDS):
-        return "color_attribute_mismatch"
+        return "attribute_mismatch"
     if tokens & ACTION_WORDS and not (set(top_text.split()) & ACTION_WORDS):
         return "action_mismatch"
     if tokens & SCENE_WORDS and not (set(top_text.split()) & SCENE_WORDS):
         return "scene_mismatch"
+    overlap_counts = []
+    for item in top_results[:3]:
+        result_tokens = {token.strip(".,;:!?") for token in str(item.get("caption", "")).lower().split()}
+        overlap_counts.append(len(result_tokens & set(content_tokens)))
+    if len(overlap_counts) >= 2 and overlap_counts[0] >= 2 and overlap_counts[1] >= 2:
+        return "multiple_valid_matches"
     if any(token in top_text for token in tokens if len(token) > 3):
         return "visually_similar_negative"
-    if len(tokens) > 5:
+    if len(content_tokens) > 5:
         return "ambiguous_caption"
     return "object_mismatch"
 
@@ -98,13 +107,20 @@ def main(argv: list[str] | None = None) -> None:
     for key, value in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
         lines.append(f"- {key}: {value}")
     lines.append("")
-    for i, item in enumerate(entries[:25], start=1):
+    for i, item in enumerate(entries[:50], start=1):
+        category = classify_failure(item["query_caption"], item.get("top_results", []))
+        note = "likely visually similar negative" if category == "visually_similar_negative" else "conservative heuristic classification"
         lines.append(f"## Failure {i}")
         lines.append(f"- query: {item['query_caption']}")
         lines.append(f"- expected_image_id: {item['expected_image_id']}")
         lines.append(f"- expected_image_path: {item['expected_image_path']}")
-        lines.append(f"- failure_category: {classify_failure(item['query_caption'], item.get('top_results', []))}")
-        lines.append(f"- top_results: {len(item['top_results'])}")
+        lines.append(f"- failure_category: {category}")
+        lines.append(f"- conservative_note: {note}")
+        lines.append(f"- retrieved_image_ids: {item.get('retrieved_image_ids', [])}")
+        lines.append(f"- retrieved_image_paths: {item.get('retrieved_image_paths', [])}")
+        lines.append(f"- retrieved_captions: {item.get('retrieved_captions', [])}")
+        lines.append(f"- scores: {item.get('scores', [])}")
+        lines.append(f"- rank_of_correct_image: {item.get('rank_of_correct_image')}")
         lines.append("")
     markdown_path.write_text("\n".join(lines))
 

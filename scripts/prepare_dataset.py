@@ -100,11 +100,43 @@ def build_canonical_rows_from_manifest(df: pd.DataFrame, source: str) -> List[di
     return rows
 
 
-def build_canonical_rows_from_hf(records: Iterable[dict], source: str, image_dir: Path, sample_size: int, seed: int) -> List[dict]:
+def _coerce_sample_size(sample_size: Any, default: int | None = None) -> int | str | None:
+    if sample_size is None:
+        return default
+    if isinstance(sample_size, str):
+        text = sample_size.strip().lower()
+        if not text:
+            return default
+        if text == "full":
+            return "full"
+        return int(text)
+    return int(sample_size)
+
+
+def build_canonical_rows_from_hf(
+    records: Iterable[dict] | Any,
+    source: str,
+    image_dir: Path,
+    sample_size: int | str,
+    seed: int,
+) -> List[dict]:
     rows: List[dict] = []
+    rng = np.random.default_rng(seed)
+    if hasattr(records, "items") and not isinstance(records, list):
+        flattened: List[dict] = []
+        for split_name, split_records in records.items():
+            for record in split_records:
+                item = dict(record)
+                item["_hf_split"] = split_name
+                flattened.append(item)
+        rng.shuffle(flattened)
+        iterable = enumerate(flattened)
+    else:
+        iterable = enumerate(records)
     accepted = 0
-    for index, record in enumerate(records):
-        if accepted >= sample_size:
+    target = None if sample_size == "full" else int(sample_size)
+    for index, record in iterable:
+        if target is not None and accepted >= target:
             break
         captions = extract_captions_from_record(record)
         if not captions:
@@ -114,7 +146,8 @@ def build_canonical_rows_from_hf(records: Iterable[dict], source: str, image_dir
             continue
         file_name = record.get("file_name") or f"{accepted:06d}.jpg"
         suffix = Path(file_name).suffix or ".jpg"
-        dataset_dir = image_dir / source
+        split_name = str(record.get("split") or record.get("_hf_split") or "train")
+        dataset_dir = image_dir / source / split_name
         dataset_dir.mkdir(parents=True, exist_ok=True)
         image_id = Path(file_name).stem or f"{source}_{accepted:06d}"
         local_path = dataset_dir / f"{image_id}{suffix}"
@@ -125,19 +158,19 @@ def build_canonical_rows_from_hf(records: Iterable[dict], source: str, image_dir
                 "image_id": image_id,
                 "image_path": str(local_path),
                 "captions": captions,
-                "split": "train",
+                "split": split_name,
                 "source": source,
                 "metadata": {
                     "file_name": file_name,
                     "caption_count": len(captions),
-                    "source_split": record.get("split"),
+                    "source_split": split_name,
                     "sample_index": index,
                 },
             }
         )
         accepted += 1
-    if accepted < sample_size:
-        raise RuntimeError(f"Only collected {accepted} rows out of requested {sample_size}")
+    if target is not None and accepted < target:
+        raise RuntimeError(f"Only collected {accepted} rows out of requested {target}")
     return rows
 
 
@@ -199,7 +232,7 @@ def write_dataset_stats(
     output_dir: Path,
     report_prefix: str,
     dataset_name: str,
-    sample_size: int,
+    sample_size: int | str,
     image_dir: Path,
     metadata_path: Path,
     config: dict,
@@ -209,12 +242,14 @@ def write_dataset_stats(
     payload = {
         "dataset_name": dataset_name,
         "sample_size": sample_size,
+        "requested_sample_size": sample_size,
         "images": len(rows),
         "captions": caption_count,
         "average_captions_per_image": float(caption_count / len(rows)) if rows else 0.0,
         "split_counts": dict(counts),
         "metadata_path": str(metadata_path),
         "image_artifact_path": str(image_dir),
+        "reports_dir": str(output_dir),
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "source": dataset_name,
@@ -241,7 +276,7 @@ def main() -> None:
     parser.add_argument("--config", default="configs/retina.yaml")
     parser.add_argument("--dataset", default="synthetic", choices=["synthetic", "hf_flickr8k", "hf_flickr30k"])
     parser.add_argument("--hf-dataset", default=None)
-    parser.add_argument("--sample-size", type=int, default=None)
+    parser.add_argument("--sample-size", default=None)
     parser.add_argument("--report-prefix", default="")
     parser.add_argument("--manifest", default=None)
     parser.add_argument("--output-dir", default=None)
@@ -288,21 +323,18 @@ def main() -> None:
     hf_dataset = args.hf_dataset
     if not hf_dataset:
         raise ValueError("--hf-dataset is required for real HF datasets")
-    sample_size = args.sample_size or int(config["dataset"].get("sample_limit") or 500)
+    requested_sample_size = _coerce_sample_size(args.sample_size, int(config["dataset"].get("sample_limit") or 500))
     from datasets import load_dataset
 
-    stream = load_dataset(hf_dataset, split="train", streaming=True)
-    stream = stream.shuffle(seed=int(config["dataset"]["seed"]), buffer_size=min(max(sample_size * 2, 100), 1000))
+    dataset = load_dataset(hf_dataset)
     canonical_rows = build_canonical_rows_from_hf(
-        stream,
+        dataset,
         source=args.dataset.replace("hf_", ""),
         image_dir=image_dir,
-        sample_size=sample_size,
+        sample_size=requested_sample_size,
         seed=int(config["dataset"]["seed"]),
     )
     canonical_df = pd.DataFrame(canonical_rows)
-    split_df = split_by_image(canonical_df[["image_id", "image_path", "split"]].copy(), config["dataset"]["split_ratios"], int(config["dataset"]["seed"]))
-    canonical_df["split"] = split_df["split"].tolist()
     metadata_jsonl.parent.mkdir(parents=True, exist_ok=True)
     metadata_csv.parent.mkdir(parents=True, exist_ok=True)
     with metadata_jsonl.open("w") as f:
@@ -327,7 +359,7 @@ def main() -> None:
         reports_dir,
         args.report_prefix,
         dataset_name=args.dataset.replace("hf_", ""),
-        sample_size=sample_size,
+        sample_size=requested_sample_size if requested_sample_size is not None else len(canonical_rows),
         image_dir=image_dir,
         metadata_path=metadata_jsonl,
         config=config,

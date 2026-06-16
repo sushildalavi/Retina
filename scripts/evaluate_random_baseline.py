@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> None:
     rng = np.random.default_rng(args.seed)
     ranks = rng.integers(1, n_candidates + 1, size=len(query_rows)).tolist()
     metrics = evaluate_ranks(ranks, [0.0] * len(ranks)).to_dict()
+    ndcg_scores = [float(1.0 / np.log2(rank + 1)) if rank <= 10 else 0.0 for rank in ranks]
     payload = {
         "dataset_name": str(metadata["source"].iloc[0]) if "source" in metadata.columns and len(metadata) else "synthetic",
         "sample_size": int(metadata["image_id"].nunique()),
@@ -50,6 +51,7 @@ def main(argv: list[str] | None = None) -> None:
         "candidate_images": n_candidates,
         "seed": args.seed,
         "method": "random",
+        "ndcg_at_10": float(np.mean(ndcg_scores)) if ndcg_scores else 0.0,
         **metrics,
     }
     reports_dir = Path(config["artifacts"]["reports_dir"])

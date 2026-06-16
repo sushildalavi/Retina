@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> None:
     run([python, "-m", "scripts.build_embeddings", "--config", args.config, "--report-prefix", args.report_prefix])
     run([python, "-m", "scripts.build_image_text_index", "--config", args.config])
     run([python, "-m", "scripts.evaluate_retrieval", "--config", args.config, "--report-prefix", args.report_prefix])
+    run([python, "-m", "scripts.evaluate_recommendations", "--config", args.config, "--report-prefix", args.report_prefix])
     run([python, "-m", "scripts.evaluate_random_baseline", "--config", args.config, "--report-prefix", args.report_prefix])
     run([python, "-m", "scripts.analyze_retrieval_failures", "--config", args.config, "--report-prefix", args.report_prefix])
     run([python, "-m", "scripts.benchmark_embedding_runtime", "--config", args.config, "--report-prefix", args.report_prefix])

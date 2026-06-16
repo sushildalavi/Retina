@@ -156,4 +156,4 @@ def test_build_canonical_rows_from_hf_materializes_images(tmp_path):
         seed=42,
     )
     assert rows[0]["captions"] == ["cap 1", "cap 2", "cap 3", "cap 4", "cap 5"]
-    assert (tmp_path / "artifacts" / "flickr8k" / "sample.jpg").exists()
+    assert (tmp_path / "artifacts" / "flickr8k" / "train" / "sample.jpg").exists()
