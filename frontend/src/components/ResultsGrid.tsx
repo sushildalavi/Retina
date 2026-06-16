@@ -21,7 +21,10 @@ export function ResultsGrid({ results, emptyLabel }: ResultsGridProps) {
               {imageUrl ? (
                 <img className="result-card__image" src={imageUrl} alt={result.caption || result.image_id} loading="lazy" />
               ) : (
-                <div className="result-card__image-fallback">No browser-accessible image</div>
+                <div className="result-card__image-fallback">
+                  <span>Preview unavailable</span>
+                  <strong>{result.caption || result.image_id}</strong>
+                </div>
               )}
             </div>
             <div className="result-card__body">
