@@ -17,23 +17,30 @@ make frontend
 ```
 
 3. Open the Vite URL printed in the terminal, usually `http://localhost:5173`.
-4. Try a representative text query such as:
+4. Capture the Overview tab first so the metrics cards are visible.
+5. Try a representative text query such as:
 
 ```text
 A bicyclist doing a jump trick
 ```
 
-5. Also check the profile and similar-image tabs so the screenshot shows the full product shape.
-6. Save the screenshot at:
+6. Capture the Text Recommendations tab with real results.
+7. Capture the Research Results tab with the benchmark tables visible.
+8. Optionally capture the Similar Images and Profile Recommendations tabs if you want a fuller product walkthrough.
+9. Save the screenshots at:
 
 ```text
-docs/assets/retina_dashboard.png
+docs/assets/retina_dashboard_overview.png
+docs/assets/retina_text_recommendations.png
+docs/assets/retina_research_results.png
 ```
 
-7. Link it from the README with:
+10. Link them from the README with:
 
 ```markdown
-![Retina dashboard](docs/assets/retina_dashboard.png)
+![Retina overview](docs/assets/retina_dashboard_overview.png)
+![Retina text recommendations](docs/assets/retina_text_recommendations.png)
+![Retina research results](docs/assets/retina_research_results.png)
 ```
 
 ## Notes
