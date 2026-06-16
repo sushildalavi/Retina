@@ -11,6 +11,7 @@ import pandas as pd
 import yaml
 
 from retrieval.clip_encoder import RetinaClipEncoder
+from retrieval.search import RetinaSearchEngine
 
 
 def load_config(path: str | Path) -> dict:
@@ -37,20 +38,37 @@ def main() -> None:
         encoder.encode_texts([caption], batch_size=1)
         text_times.append((time.perf_counter() - start) * 1000.0)
 
+    engine = RetinaSearchEngine.load(
+        model_name=config["model"]["name"],
+        device=config["model"]["device"],
+        metadata_path=config["artifacts"]["metadata_path"],
+        index_path=config["artifacts"]["index_path"],
+        index_meta_path=config["artifacts"]["index_meta_path"],
+    )
+    search_times = []
+    for caption in sample["caption"].tolist():
+        start = time.perf_counter()
+        engine.search_text(caption, top_k=int(config["search"]["top_k"]))
+        search_times.append((time.perf_counter() - start) * 1000.0)
+
     payload = {
         "model_name": encoder.model_name,
         "device": encoder.device,
+        "sample_size": int(len(sample)),
         "image_latency_p50_ms": float(np.percentile(image_times, 50)) if image_times else 0.0,
         "image_latency_p95_ms": float(np.percentile(image_times, 95)) if image_times else 0.0,
         "text_latency_p50_ms": float(np.percentile(text_times, 50)) if text_times else 0.0,
         "text_latency_p95_ms": float(np.percentile(text_times, 95)) if text_times else 0.0,
         "image_throughput_per_sec": float(len(image_times) / (sum(image_times) / 1000.0)) if image_times else 0.0,
         "text_throughput_per_sec": float(len(text_times) / (sum(text_times) / 1000.0)) if text_times else 0.0,
+        "search_queries_per_sec": float(len(search_times) / (sum(search_times) / 1000.0)) if search_times else 0.0,
+        "search_latency_p50_ms": float(np.percentile(search_times, 50)) if search_times else 0.0,
+        "search_latency_p95_ms": float(np.percentile(search_times, 95)) if search_times else 0.0,
     }
     reports_dir = Path(config["artifacts"]["reports_dir"])
     reports_dir.mkdir(parents=True, exist_ok=True)
-    (reports_dir / "retina_runtime_benchmark.json").write_text(json.dumps(payload, indent=2))
-    (reports_dir / "retina_runtime_benchmark.md").write_text(
+    (reports_dir / "runtime_benchmark.json").write_text(json.dumps(payload, indent=2))
+    (reports_dir / "runtime_benchmark.md").write_text(
         "# Retina Runtime Benchmark\n\n"
         + "\n".join(f"- {k}: {v}" for k, v in payload.items())
         + "\n"
@@ -59,4 +77,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

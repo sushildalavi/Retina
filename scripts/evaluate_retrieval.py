@@ -51,6 +51,7 @@ def main() -> None:
                     "query_caption": row["caption"],
                     "expected_image_id": row["image_id"],
                     "expected_image_path": row["image_path"],
+                    "failure_category": "no_hit",
                     "top_results": results,
                 }
             )
@@ -60,16 +61,18 @@ def main() -> None:
         {
             "queries": int(len(metadata)),
             "failures": int(len(failures)),
+            "images": int(metadata["image_id"].nunique()),
+            "model_name": config["model"]["name"],
+            "device": engine.encoder.device,
         }
     )
     reports_dir = Path(config["artifacts"]["reports_dir"])
-    save_json(reports_dir / "retina_retrieval_eval.json", metrics)
-    (reports_dir / "retina_retrieval_eval.md").write_text(format_report("Retina Retrieval Evaluation", metrics))
-    (reports_dir / "retina_retrieval_failures.jsonl").write_text(
+    save_json(reports_dir / "retrieval_eval.json", metrics)
+    (reports_dir / "retrieval_eval.md").write_text(format_report("Retina Retrieval Evaluation", metrics))
+    (reports_dir / "retrieval_failures.jsonl").write_text(
         "\n".join(json.dumps(item) for item in failures[:20]) + ("\n" if failures else "")
     )
 
 
 if __name__ == "__main__":
     main()
-
