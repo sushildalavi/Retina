@@ -1,5 +1,9 @@
 # Retina Limitations
 
+- Why frozen CLIP?
+
+Retina uses frozen CLIP embeddings because the project is a content-based retrieval system, not a CLIP training project. Keeping CLIP frozen makes the benchmark reproducible, avoids overfitting on the small Flickr8k corpus, and fits the Mac-local compute budget. The current full Flickr8k results already validate the retrieval stack, so fine-tuning is better treated as future work rather than an implemented claim.
+
 - retrieval-first MVP
 - content-based, not collaborative filtering
 - no CUDA dependency

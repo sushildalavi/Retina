@@ -2,6 +2,10 @@
 
 Retina keeps `openai/clip-vit-base-patch32` as the default local model because it is the best balance of quality and latency for Mac-local serving.
 
+## Why Frozen CLIP?
+
+Retina is a content-based recommendation and retrieval system, not a CLIP training project. Freezing CLIP keeps the benchmark reproducible, avoids overfitting on Flickr8k, and fits the Mac-local compute constraints. The measured full Flickr8k results already validate the retrieval stack, so fine-tuning stays in future work instead of the current implementation claim.
+
 ## Measured comparison on 500 images
 
 | Model | Recall@10 | MRR | nDCG@10 | Image embeddings/sec | End-to-end search p95 |

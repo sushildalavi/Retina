@@ -18,7 +18,12 @@ A Mac-local content-based visual recommendation system using CLIP embeddings, FA
 
 ## Screenshots
 
-Real dashboard screenshots are not bundled yet. Follow [docs/demo_screenshot_instructions.md](docs/demo_screenshot_instructions.md) to capture them locally.
+![Retina overview](docs/assets/retina_dashboard_overview.png)
+
+![Retina text recommendations](docs/assets/retina_text_recommendations.png)
+
+![Retina research results](docs/assets/retina_research_results.png)
+
 For a short recorded walkthrough script, see [docs/demo_video_instructions.md](docs/demo_video_instructions.md).
 
 ## Start Here
@@ -28,6 +33,10 @@ For a short recorded walkthrough script, see [docs/demo_video_instructions.md](d
 - [Runtime benchmarks](docs/runtime_benchmarks.md)
 - [Error analysis](docs/error_analysis.md)
 - [Model tradeoffs](docs/model_tradeoffs.md)
+
+## Why Frozen CLIP?
+
+Retina is a content-based retrieval system, not a CLIP training project. Freezing CLIP keeps the benchmark reproducible, avoids overfitting on the small Flickr8k corpus, and fits the Mac-local compute budget. The measured full Flickr8k results already validate the retrieval pipeline, so fine-tuning remains future work rather than a claimed implementation.
 
 ## Architecture
 

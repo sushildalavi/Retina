@@ -2,6 +2,10 @@
 
 Retina is a content-based visual recommendation system. It does not use collaborative filtering or real user history.
 
+## Why Frozen CLIP?
+
+Retina is a retrieval system first, not a CLIP training project. Freezing CLIP keeps the benchmark reproducible, avoids overfitting on the small Flickr8k corpus, and works better with the Mac-local compute budget. The existing full Flickr8k results already validate the retrieval pipeline; fine-tuning remains future work, not a claimed implementation.
+
 ## Recommendation modes
 
 - `GET /recommend/text?query=...&top_k=10`

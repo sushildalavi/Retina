@@ -156,6 +156,8 @@ class RetinaService:
 
     def _format_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
         payload = dict(result)
+        payload["image_id"] = str(payload.get("image_id", ""))
+        payload["image_path"] = str(payload.get("image_path", ""))
         captions = _parse_captions(payload.get("captions"))
         payload["captions"] = captions
         payload["caption"] = captions[0] if captions else str(payload.get("caption", ""))
