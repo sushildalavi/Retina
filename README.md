@@ -1,20 +1,21 @@
 # Retina
 
-## Visual Intelligence Recommendation Engine
+## Visual Discovery Platform
 
-A Mac-local content-based visual recommendation system using CLIP embeddings, FAISS indexing, FastAPI, React, and Gradio.
+A full-stack, Mac-local visual discovery app for quickly finding the right image from a large catalog using text, image, or profile-style intent.
 
-## Key Metrics
+## Business Need
 
-| Metric | Value |
-| --- | ---: |
-| Dataset | Flickr8k full |
-| Images / captions | 8K / 40K |
-| Recall@10 | 0.642 |
-| MRR | 0.408 |
-| nDCG@10 | 0.464 |
-| Random Recall@10 | 0.0012 |
-| End-to-end p95 latency | 14.7 ms |
+Retina addresses a common product problem: people waste time manually scanning large image libraries when they really want to search by meaning, not filename.
+
+It helps with:
+
+- catalog search for e-commerce, media, and content operations
+- creative review and asset reuse
+- semantic discovery when users do not know exact image IDs or tags
+- faster shortlisting of relevant visuals before a human makes the final decision
+
+The app is end to end: the React UI captures the query, FastAPI executes the search, CLIP/FAISS ranks the results, and the browser shows the ranked outputs immediately.
 
 ## Screenshots
 
@@ -28,6 +29,7 @@ For a short recorded walkthrough script, see [docs/demo_video_instructions.md](d
 
 ## Start Here
 
+- [Business need](docs/business_need.md)
 - [Final results](docs/final_results.md)
 - [Recommendation system](docs/recommendation_system.md)
 - [Runtime benchmarks](docs/runtime_benchmarks.md)
@@ -59,7 +61,7 @@ Flickr8k images + captions
 
 ## What it does
 
-Retina uses CLIP embeddings and a CPU FAISS index to recommend semantically similar images from text, image, and content-profile queries. The project evaluates the system with Recall@K, MRR, MAP@10, nDCG@10, throughput, latency, and failure analysis.
+Retina is an end-to-end visual search product. It uses CLIP embeddings and a CPU FAISS index to recommend semantically similar images from text, image, and content-profile queries. The project evaluates the system with Recall@K, MRR, MAP@10, nDCG@10, throughput, latency, and failure analysis, but the product value is the faster search experience for users.
 
 ## Local Setup
 
@@ -167,7 +169,7 @@ CLIP is far above random because it learns semantic alignment between captions a
 
 ## Resume-Safe Summary
 
-Built Retina, a Mac-local content-based visual recommendation system using CLIP ViT-B/32 embeddings, FAISS CPU indexing, and FastAPI/React/Gradio serving; evaluated on full Flickr8k (8K images / 40K captions) with 0.642 Recall@10, 0.408 MRR, 0.464 nDCG@10, and 14.7 ms p95 end-to-end search latency, outperforming random Recall@10 by 535x.
+Built Retina, a full-stack visual discovery platform using CLIP ViT-B/32 embeddings, FAISS CPU indexing, and FastAPI/React/Gradio serving; it turns a large image catalog into a searchable product for text, image, and profile-based discovery, with full Flickr8k validation and low-latency ranked retrieval.
 
 ## Source of Truth
 

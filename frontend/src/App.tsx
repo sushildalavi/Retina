@@ -239,8 +239,8 @@ function App() {
               <div className="eyebrow">Overview</div>
               <h1>Search by intent, get visually relevant results</h1>
               <p>
-                Retina is a content-based visual retrieval app. It is designed for users who want fast, ranked
-                results from text, image, or profile-style queries.
+                Retina is a full-stack visual discovery app for catalog search and asset review. It helps users
+                find the right image fast from text, image, or profile-style queries.
               </p>
             </div>
 
@@ -320,7 +320,7 @@ function App() {
             <div className="workflow__header">
               <div>
                 <div className="eyebrow">Text Recommendations</div>
-                <h2>Search the corpus with natural language</h2>
+                <h2>Search the catalog with natural language</h2>
               </div>
             </div>
 

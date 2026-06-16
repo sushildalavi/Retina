@@ -1,6 +1,6 @@
 # Retina Recommendation System
 
-Retina is a content-based visual recommendation system. It does not use collaborative filtering or real user history.
+Retina is a full-stack visual discovery system for catalog search and asset review. It does not use collaborative filtering or real user history.
 
 ## Why Frozen CLIP?
 
@@ -23,6 +23,7 @@ Retina is a retrieval system first, not a CLIP training project. Freezing CLIP k
 - recommendations are similarity-based, not personalized from user behavior
 - profile recommendations are simulated from grouped captions and liked image IDs
 - image-to-image recommendations are qualitative/latency-focused because the benchmark does not define strong real-world positives
+- the product value is faster asset discovery, not model training
 
 ## Result fields
 

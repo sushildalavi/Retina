@@ -1,6 +1,6 @@
 # Retina Model Tradeoffs
 
-Retina keeps `openai/clip-vit-base-patch32` as the default local model because it is the best balance of quality and latency for Mac-local serving.
+Retina keeps `openai/clip-vit-base-patch32` as the default local model because it is the best balance of quality and latency for Mac-local serving in a product setting.
 
 ## Why Frozen CLIP?
 
@@ -21,5 +21,5 @@ Retina is a content-based recommendation and retrieval system, not a CLIP traini
 
 ## Practical conclusion
 
-Use ViT-B/32 for local serving and recruiting demos.
+Use ViT-B/32 for local serving, internal product demos, and customer-facing discovery workflows.
 Use ViT-L/14 only as an exploratory baseline when you can tolerate much slower runtime.
