@@ -22,7 +22,7 @@ A Mac-local content-based visual recommendation system using CLIP embeddings, FA
 
 ![Retina text recommendations](docs/assets/retina_text_recommendations.png)
 
-![Retina research results](docs/assets/retina_research_results.png)
+![Retina profile recommendations](docs/assets/retina_research_results.png)
 
 For a short recorded walkthrough script, see [docs/demo_video_instructions.md](docs/demo_video_instructions.md).
 

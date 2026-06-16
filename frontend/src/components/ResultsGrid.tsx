@@ -34,22 +34,10 @@ export function ResultsGrid({ results, emptyLabel }: ResultsGridProps) {
               </div>
               <h3>{result.caption || result.image_id}</h3>
               <p className="result-card__reason">{result.recommendation_reason}</p>
-              <dl className="result-card__meta">
-                <div>
-                  <dt>Image</dt>
-                  <dd>{result.image_id}</dd>
-                </div>
-                <div>
-                  <dt>Path</dt>
-                  <dd>{result.image_path}</dd>
-                </div>
-                {result.image_url ? (
-                  <div>
-                    <dt>URL</dt>
-                    <dd>{result.image_url}</dd>
-                  </div>
-                ) : null}
-              </dl>
+              <div className="result-card__meta">
+                <span className="chip">Image {result.image_id}</span>
+                {result.captions?.[0] ? <span className="chip chip--muted">{result.captions[0]}</span> : null}
+              </div>
             </div>
           </article>
         );
