@@ -605,18 +605,18 @@ function App() {
                 {barList([
                   {
                     label: 'Recall@10',
-                    value: displaySummary.recommendation.image_to_image.recall_at_10,
-                    detail: 'Image-to-image retrieval',
+                    value: displaySummary.retrieval.recall_at_10,
+                    detail: 'Full Flickr8k retrieval',
                   },
                   {
                     label: 'MRR',
-                    value: displaySummary.recommendation.text_to_image.mrr,
-                    detail: 'Text query ranking',
+                    value: displaySummary.retrieval.mrr,
+                    detail: 'Caption ranking quality',
                   },
                   {
                     label: 'nDCG@10',
-                    value: displaySummary.recommendation.profile.ndcg_at_10,
-                    detail: 'Profile ranking quality',
+                    value: displaySummary.retrieval.ndcg_at_10,
+                    detail: 'Top-k ordering gain',
                   },
                   {
                     label: 'p95 latency',
@@ -719,41 +719,6 @@ function App() {
                     </span>
                   ))}
                 </div>
-              </article>
-            </div>
-          </section>
-
-          <section className="details">
-            <div className="details__header">
-              <div>
-                <div className="eyebrow">Model + data</div>
-                <h2>Useful internal state</h2>
-              </div>
-            </div>
-            <div className="details__grid">
-              <article className="detail-card">
-                <div className="detail-card__label">Dataset</div>
-                <div className="detail-card__value">{displaySummary.dataset.name}</div>
-                <div className="detail-card__meta">
-                  {formatInteger(displaySummary.dataset.images)} images
-                  <br />
-                  {formatInteger(displaySummary.dataset.captions)} captions
-                </div>
-              </article>
-              <article className="detail-card">
-                <div className="detail-card__label">Model</div>
-                <div className="detail-card__value">{displayService.model_name}</div>
-                <div className="detail-card__meta">{displayService.device.toUpperCase()}</div>
-              </article>
-              <article className="detail-card">
-                <div className="detail-card__label">Latency</div>
-                <div className="detail-card__value">{formatMilliseconds(displaySummary.retrieval.end_to_end_text_search_latency_p95_ms)}</div>
-                <div className="detail-card__meta">Text search p95</div>
-              </article>
-              <article className="detail-card">
-                <div className="detail-card__label">Baseline gap</div>
-                <div className="detail-card__value">{formatNumber(displaySummary.retrieval.recall_at_10 / displaySummary.random_baseline.recall_at_10, 0)}x</div>
-                <div className="detail-card__meta">Recall@10 versus random</div>
               </article>
             </div>
           </section>
