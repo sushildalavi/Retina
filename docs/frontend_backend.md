@@ -1,6 +1,6 @@
 # Retina Frontend + Backend
 
-Retina is local-first. The backend exposes the CLIP/FAISS service, and the React dashboard consumes only JSON responses plus browser-safe image URLs.
+Retina is local-first. The backend exposes the frozen CLIP backbone, trainable query adapter, and FAISS search service, and the React dashboard consumes only JSON responses plus browser-safe image URLs.
 
 ## Local commands
 

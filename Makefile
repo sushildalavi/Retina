@@ -15,7 +15,7 @@ SAMPLE_SIZE_ARG = $(if $(strip $(SAMPLE_SIZE)),--sample-size $(SAMPLE_SIZE),)
 MANIFEST_ARG = $(if $(strip $(MANIFEST)),--manifest $(MANIFEST),)
 OUTPUT_DIR_ARG = $(if $(strip $(OUTPUT_DIR)),--output-dir $(OUTPUT_DIR),)
 
-.PHONY: install test format lint prepare-data embeddings index eval recommendations random-baseline benchmark failures api frontend-install frontend demo all-local flickr8k-full-data flickr8k-full-embeddings flickr8k-full-index flickr8k-full-eval flickr8k-full-recommendations flickr8k-full-benchmark flickr8k-full-failures
+.PHONY: install test format lint prepare-data embeddings train-query-adapter index eval recommendations random-baseline benchmark failures api frontend-install frontend demo all-local flickr8k-full-data flickr8k-full-embeddings flickr8k-full-index flickr8k-full-eval flickr8k-full-recommendations flickr8k-full-benchmark flickr8k-full-failures
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -37,6 +37,9 @@ prepare-data:
 
 embeddings:
 	$(PYTHON) -m scripts.build_embeddings --config $(CONFIG) $(REPORT_ARG)
+
+train-query-adapter:
+	$(PYTHON) -m scripts.train_query_adapter --config $(CONFIG) $(REPORT_ARG)
 
 index:
 	$(PYTHON) -m scripts.build_image_text_index --config $(CONFIG)

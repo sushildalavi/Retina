@@ -20,6 +20,7 @@ class RetinaSettings(BaseModel):
     index_path: Path
     index_meta_path: Path
     reports_dir: Path
+    query_adapter_path: Path = Path("models/retina_query_adapter.pt")
     image_artifact_dir: Path = Path("data/artifacts/images")
     setup_command: str = "make all-local"
     api_host: str = "127.0.0.1"
@@ -47,6 +48,7 @@ class RetinaSettings(BaseModel):
             index_path=Path(artifacts.get("index_path", "data/processed/index/retina_image_index.faiss")),
             index_meta_path=Path(artifacts.get("index_meta_path", "data/processed/index/retina_image_index.json")),
             reports_dir=Path(artifacts.get("reports_dir", "reports")),
+            query_adapter_path=Path(artifacts.get("query_adapter_path", "models/retina_query_adapter.pt")),
             image_artifact_dir=Path(artifacts.get("image_dir", "data/artifacts/images")),
             setup_command=str(payload.get("setup", {}).get("command", "make all-local")),
             api_host=str(server.get("host", "127.0.0.1")),

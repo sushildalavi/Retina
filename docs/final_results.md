@@ -1,12 +1,13 @@
 # Retina Final Results
 
-Retina is a content-based visual recommendation system built around CLIP embeddings and FAISS similarity search.
+Retina is a content-based visual recommendation system built around a frozen CLIP backbone, a trained query adapter, and FAISS similarity search.
 
 ## Full Flickr8k benchmark
 
 - 8,000 images
 - 40,000 captions
 - CLIP model: `openai/clip-vit-base-patch32`
+- query adapter: trained on Flickr8k caption-image pairs
 - device: `mps`
 
 Measured retrieval:
@@ -64,7 +65,8 @@ But the tradeoff is steep:
 
 - content-based, not collaborative filtering
 - no user-behavior personalization
-- no fine-tuned CLIP
+- no CLIP backbone fine-tuning
+- the trainable model stage is the query adapter
 - no production deployment claim
 - Mac-local benchmark
 

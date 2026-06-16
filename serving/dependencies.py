@@ -80,6 +80,7 @@ class RetinaService:
                 metadata_path=settings.metadata_path,
                 index_path=settings.index_path,
                 index_meta_path=settings.index_meta_path,
+                query_adapter_path=settings.query_adapter_path if settings.query_adapter_path.exists() else None,
             )
         except RetinaMissingArtifactError:
             raise
@@ -126,6 +127,7 @@ class RetinaService:
                 "index_meta": self.settings.index_meta_path.exists(),
                 "images": self.settings.image_artifact_dir.exists(),
                 "model": True,
+                "adapter": self.settings.query_adapter_path.exists(),
             },
         }
 

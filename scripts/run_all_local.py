@@ -26,6 +26,7 @@ def main(argv: list[str] | None = None) -> None:
         prepare_cmd.extend(["--sample-size", args.sample_size])
     run(prepare_cmd)
     run([python, "-m", "scripts.build_embeddings", "--config", args.config, "--report-prefix", args.report_prefix])
+    run([python, "-m", "scripts.train_query_adapter", "--config", args.config, "--report-prefix", args.report_prefix])
     run([python, "-m", "scripts.build_image_text_index", "--config", args.config])
     run([python, "-m", "scripts.evaluate_retrieval", "--config", args.config, "--report-prefix", args.report_prefix])
     run([python, "-m", "scripts.evaluate_recommendations", "--config", args.config, "--report-prefix", args.report_prefix])

@@ -1,13 +1,14 @@
 # Retina Limitations
 
-- Why frozen CLIP?
+- Why frozen CLIP backbone?
 
-Retina uses frozen CLIP embeddings because the project is a content-based retrieval system, not a CLIP training project. Keeping CLIP frozen makes the benchmark reproducible, avoids overfitting on the small Flickr8k corpus, and fits the Mac-local compute budget. The current full Flickr8k results already validate the retrieval stack, so fine-tuning is better treated as future work rather than an implemented claim.
+Retina freezes the CLIP backbone and trains only a lightweight query adapter. That keeps the embedding space stable, avoids overfitting the small Flickr8k corpus, and fits the Mac-local compute budget. Full backbone fine-tuning is still out of scope for this repo.
 
 - full-stack discovery MVP
 - content-based, not collaborative filtering
 - no CUDA dependency
-- no fine-tuning claim unless a local run is measured
+- no CLIP backbone fine-tuning
+- the trainable part is the query adapter, not the foundation model
 - grounding is optional
 - captioning is optional
 - dataset scale is intentionally capped for local development

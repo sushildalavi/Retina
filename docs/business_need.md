@@ -18,6 +18,7 @@ Retina gives a user a single search surface that can:
 - search by natural language
 - search by example image
 - combine lightweight profile signals into a content-based recommendation request
+- learn a small query adapter from caption-image pairs so search quality can improve without retraining the full CLIP backbone
 
 ## End-to-End Flow
 
@@ -40,4 +41,3 @@ Retina gives a user a single search surface that can:
 - FastAPI backend for serving and request handling
 - CLIP/FAISS retrieval layer for ranking
 - local evaluation and report generation for product validation
-

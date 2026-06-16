@@ -17,6 +17,10 @@ It helps with:
 
 The app is end to end: the React UI captures the query, FastAPI executes the search, CLIP/FAISS ranks the results, and the browser shows the ranked outputs immediately.
 
+## Model Training
+
+Retina includes a real training stage: a lightweight query adapter is trained on Flickr8k caption-image pairs and then used to improve query embeddings at inference time. The CLIP backbone stays frozen, but the project still includes a genuine train/evaluate/deploy loop that is easy to explain in an MLE interview.
+
 ## Screenshots
 
 ![Retina overview](docs/assets/retina_dashboard_overview.png)
@@ -34,15 +38,16 @@ The app is end to end: the React UI captures the query, FastAPI executes the sea
 - Error analysis
 - Model tradeoffs
 
-## Why Frozen CLIP?
+## Why Frozen CLIP Backbone?
 
-Retina is a content-based retrieval system, not a CLIP training project. Freezing CLIP keeps the benchmark reproducible, avoids overfitting on the small Flickr8k corpus, and fits the Mac-local compute budget. The measured full Flickr8k results already validate the retrieval pipeline, so fine-tuning remains future work rather than a claimed implementation.
+Retina is a content-based retrieval system with a trainable query adapter, not a full CLIP fine-tuning project. Freezing the CLIP backbone keeps the benchmark reproducible, avoids overfitting on the small Flickr8k corpus, and fits the Mac-local compute budget. The learned adapter gives the project a real training story while preserving a stable visual embedding space.
 
 ## Architecture
 
 ```text
 Flickr8k images + captions
-  → CLIP ViT-B/32 image/text encoders
+  → frozen CLIP ViT-B/32 image/text encoders
+  → trained query adapter
   → normalized embeddings
   → FAISS CPU index
   → text / image / profile recommendations
@@ -59,7 +64,7 @@ Flickr8k images + captions
 
 ## What it does
 
-Retina is an end-to-end visual search product. It uses CLIP embeddings and a CPU FAISS index to recommend semantically similar images from text, image, and content-profile queries. The project evaluates the system with Recall@K, MRR, MAP@10, nDCG@10, throughput, latency, and failure analysis, but the product value is the faster search experience for users.
+Retina is an end-to-end visual search product. It uses CLIP embeddings, a trainable query adapter, and a CPU FAISS index to recommend semantically similar images from text, image, and content-profile queries. The project evaluates the system with Recall@K, MRR, MAP@10, nDCG@10, throughput, latency, and failure analysis, but the product value is the faster search experience for users.
 
 ## Local Setup
 
@@ -88,6 +93,7 @@ For a full local workflow:
 make install
 make prepare-data
 make embeddings
+make train-query-adapter
 make index
 make eval
 make recommendations
@@ -152,13 +158,14 @@ CLIP is far above random because it learns semantic alignment between captions a
 
 - content-based, not collaborative filtering
 - no user-behavior personalization
-- no fine-tuned CLIP
+- CLIP backbone stays frozen
+- only the query adapter is trained
 - no production deployment claim
 - Mac-local benchmark
 
 ## Resume-Safe Summary
 
-Built Retina, a full-stack visual discovery platform using CLIP ViT-B/32 embeddings, FAISS CPU indexing, and FastAPI/React/Gradio serving; it turns a large image catalog into a searchable product for text, image, and profile-based discovery, with full Flickr8k validation and low-latency ranked retrieval.
+Built Retina, a full-stack visual discovery platform using a frozen CLIP ViT-B/32 backbone, a trained query adapter, FAISS CPU indexing, and FastAPI/React/Gradio serving; it turns a large image catalog into a searchable product for text, image, and profile-based discovery, with full Flickr8k validation and low-latency ranked retrieval.
 
 ## Notes
 

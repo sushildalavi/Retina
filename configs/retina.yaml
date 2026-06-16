@@ -21,6 +21,7 @@ artifacts:
   index_path: data/processed/index/retina_image_index.faiss
   index_meta_path: data/processed/index/retina_image_index.json
   metadata_path: data/processed/retina_metadata.jsonl
+  query_adapter_path: models/retina_query_adapter.pt
   reports_dir: reports
 
 server:
@@ -35,3 +36,14 @@ search:
 
 setup:
   command: make all-local
+
+training:
+  batch_size: 128
+  epochs: 6
+  hidden_dim: 1024
+  learning_rate: 0.001
+  weight_decay: 0.01
+  temperature: 0.07
+  dropout: 0.1
+  device: auto
+  seed: 42

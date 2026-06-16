@@ -11,6 +11,7 @@ import pandas as pd
 
 from retrieval.clip_encoder import RetinaClipEncoder
 from retrieval.vector_index import FaissVectorIndex
+from training.query_adapter import QueryAdapter, apply_query_adapter, load_query_adapter
 
 
 def _parse_caption_value(value: Any) -> List[str]:
@@ -71,6 +72,7 @@ class RetinaRecommender:
     encoder: RetinaClipEncoder
     index: FaissVectorIndex
     metadata: pd.DataFrame
+    query_adapter: QueryAdapter | None = None
 
     @classmethod
     def load(
@@ -80,11 +82,17 @@ class RetinaRecommender:
         metadata_path: str | Path,
         index_path: str | Path,
         index_meta_path: str | Path,
+        query_adapter_path: str | Path | None = None,
     ) -> "RetinaRecommender":
         encoder = RetinaClipEncoder(model_name=model_name, device=device)
         index = FaissVectorIndex.load(index_path, index_meta_path)
         metadata = _load_metadata(metadata_path)
-        return cls(encoder=encoder, index=index, metadata=metadata)
+        query_adapter = None
+        if query_adapter_path:
+            path = Path(query_adapter_path)
+            if path.exists():
+                query_adapter, _ = load_query_adapter(path, device=encoder.device)
+        return cls(encoder=encoder, index=index, metadata=metadata, query_adapter=query_adapter)
 
     def __post_init__(self) -> None:
         self.metadata = self.metadata.reset_index(drop=True).copy()
@@ -92,6 +100,9 @@ class RetinaRecommender:
             self.metadata["captions"] = self.metadata["caption"].apply(_parse_caption_value)
         if "caption" not in self.metadata.columns:
             self.metadata["caption"] = self.metadata["captions"].apply(_first_caption)
+        if self.query_adapter is not None:
+            self.query_adapter.eval()
+            self.query_adapter.to(self.encoder.device)
         self._image_lookup = {
             str(row["image_id"]): idx for idx, row in self.metadata.iterrows() if "image_id" in row and pd.notna(row["image_id"])
         }
@@ -134,8 +145,11 @@ class RetinaRecommender:
                 break
         return results
 
+    def _adapt_query_embeddings(self, embeddings: np.ndarray) -> np.ndarray:
+        return apply_query_adapter(embeddings, self.query_adapter, device=self.encoder.device)
+
     def recommend_text(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
-        embedding = self.encoder.encode_texts([query], batch_size=1)
+        embedding = self._adapt_query_embeddings(self.encoder.encode_texts([query], batch_size=1))
         return self._search_embedding(embedding, top_k, "high_clip_similarity_to_text_query")
 
     def recommend_image(
@@ -167,7 +181,7 @@ class RetinaRecommender:
         liked_image_ids = [str(image_id) for image_id in (liked_image_ids or []) if str(image_id).strip()]
         vectors: List[np.ndarray] = []
         if text_queries:
-            vectors.append(self.encoder.encode_texts(text_queries, batch_size=max(1, len(text_queries))))
+            vectors.append(self._adapt_query_embeddings(self.encoder.encode_texts(text_queries, batch_size=max(1, len(text_queries)))))
         for image_id in liked_image_ids:
             lookup = self._image_lookup.get(str(image_id))
             if lookup is None:
