@@ -8,7 +8,7 @@ import type {
   HealthResponse,
 } from './types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 
 export class ApiError extends Error {
   status: number;
@@ -25,7 +25,10 @@ export class ApiError extends Error {
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(new URL(path, `${API_BASE_URL}/`).toString(), {
+  const requestUrl = API_BASE_URL.startsWith('http')
+    ? new URL(path, `${API_BASE_URL}/`).toString()
+    : `${API_BASE_URL}${path}`;
+  const response = await fetch(requestUrl, {
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers || {}),
@@ -51,7 +54,10 @@ export function resolveImageUrl(imageUrl?: string | null): string | null {
     return null;
   }
   try {
-    return new URL(imageUrl, `${API_BASE_URL}/`).toString();
+    if (API_BASE_URL.startsWith('http')) {
+      return new URL(imageUrl, `${API_BASE_URL}/`).toString();
+    }
+    return `${API_BASE_URL}${imageUrl}`;
   } catch {
     return imageUrl;
   }
@@ -70,17 +76,13 @@ export async function getMetricsSummary(): Promise<MetricsSummaryResponse> {
 }
 
 export async function recommendText(query: string, topK: number): Promise<TextRecommendationResponse> {
-  const url = new URL('/recommend/text', `${API_BASE_URL}/`);
-  url.searchParams.set('query', query);
-  url.searchParams.set('top_k', String(topK));
-  return requestJson<TextRecommendationResponse>(url.pathname + url.search + url.hash);
+  const path = `/recommend/text?query=${encodeURIComponent(query)}&top_k=${topK}`;
+  return requestJson<TextRecommendationResponse>(path);
 }
 
 export async function recommendImage(imageId: string, topK: number): Promise<ImageRecommendationResponse> {
-  const url = new URL('/recommend/image', `${API_BASE_URL}/`);
-  url.searchParams.set('image_id', imageId);
-  url.searchParams.set('top_k', String(topK));
-  return requestJson<ImageRecommendationResponse>(url.pathname + url.search + url.hash);
+  const path = `/recommend/image?image_id=${encodeURIComponent(imageId)}&top_k=${topK}`;
+  return requestJson<ImageRecommendationResponse>(path);
 }
 
 export async function recommendProfile(

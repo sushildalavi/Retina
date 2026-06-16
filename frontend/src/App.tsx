@@ -83,8 +83,8 @@ function App() {
             : metadataResponse.status === 'rejected'
               ? metadataResponse.reason
               : null;
-        const message = reason instanceof ApiError ? reason.message : 'Live backend unavailable';
-        setStartupNotice(`Showing the demo shell until live backend data is available. (${message})`);
+        const message = reason instanceof ApiError ? reason.message : 'Local service unavailable';
+        setStartupNotice(`Preview mode is active until the local service responds. (${message})`);
       } else {
         setStartupNotice(null);
       }
@@ -181,7 +181,7 @@ function App() {
         <div className="sidebar__footer">
           <div className="status-panel">
             <div className="status-panel__label">System status</div>
-            <div className="status-panel__value">{isLive ? 'Connected' : 'Demo ready'}</div>
+            <div className="status-panel__value">{isLive ? 'Connected' : 'Preview ready'}</div>
             <div className="status-panel__detail">
               {displayService.model_name}
               <br />

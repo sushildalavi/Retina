@@ -1112,6 +1112,8 @@ a {
 
 .query-grid input,
 .query-grid textarea,
+.query-card input,
+.query-card textarea,
 .compact-form input,
 .compact-form textarea {
   width: 100%;
@@ -1124,6 +1126,7 @@ a {
 }
 
 .query-grid textarea,
+.query-card textarea,
 .compact-form textarea {
   resize: vertical;
   min-height: 102px;
@@ -1131,6 +1134,8 @@ a {
 
 .query-grid input:focus,
 .query-grid textarea:focus,
+.query-card input:focus,
+.query-card textarea:focus,
 .compact-form input:focus,
 .compact-form textarea:focus,
 .omnibox input:focus {

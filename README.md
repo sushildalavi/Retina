@@ -25,16 +25,14 @@ The app is end to end: the React UI captures the query, FastAPI executes the sea
 
 ![Retina profile recommendations](docs/assets/retina_research_results.png)
 
-For a short recorded walkthrough script, see [docs/demo_video_instructions.md](docs/demo_video_instructions.md).
-
 ## Start Here
 
-- [Business need](docs/business_need.md)
-- [Final results](docs/final_results.md)
-- [Recommendation system](docs/recommendation_system.md)
-- [Runtime benchmarks](docs/runtime_benchmarks.md)
-- [Error analysis](docs/error_analysis.md)
-- [Model tradeoffs](docs/model_tradeoffs.md)
+- Business need
+- Final results
+- Recommendation system
+- Runtime benchmarks
+- Error analysis
+- Model tradeoffs
 
 ## Why Frozen CLIP?
 
@@ -108,15 +106,6 @@ npm install
 npm run dev
 ```
 
-## Reports
-
-- [Final results](docs/final_results.md)
-- [Runtime benchmarks](docs/runtime_benchmarks.md)
-- [Scaling experiment](docs/scaling_experiment.md)
-- [Failure analysis](docs/error_analysis.md)
-- [Model tradeoffs](docs/model_tradeoffs.md)
-- [Frontend/backend contract](docs/frontend_backend.md)
-
 ## Full Flickr8k Benchmark
 
 - Dataset: 8,000 images / 40,000 captions
@@ -170,14 +159,6 @@ CLIP is far above random because it learns semantic alignment between captions a
 ## Resume-Safe Summary
 
 Built Retina, a full-stack visual discovery platform using CLIP ViT-B/32 embeddings, FAISS CPU indexing, and FastAPI/React/Gradio serving; it turns a large image catalog into a searchable product for text, image, and profile-based discovery, with full Flickr8k validation and low-latency ranked retrieval.
-
-## Source of Truth
-
-- `reports/final_retina_metrics_summary.json`
-- `reports/final_retina_metrics_summary.md`
-- `reports/flickr8k_full_*`
-- `reports/model_baseline_comparison.json`
-- `reports/scaling_experiment.json`
 
 ## Notes
 
