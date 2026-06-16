@@ -4,11 +4,12 @@ interface SectionProps {
   title: string;
   description?: string;
   children: ReactNode;
+  id?: string;
 }
 
-export function Section({ title, description, children }: SectionProps) {
+export function Section({ title, description, children, id }: SectionProps) {
   return (
-    <section className="panel">
+    <section className="panel" id={id}>
       <header className="panel__header">
         <div>
           <h2>{title}</h2>
