@@ -1,8 +1,11 @@
 # Retina Dataset Setup
 
-Retina expects a local manifest at `data/raw/captions.csv` or a custom path passed to `scripts/prepare_dataset.py`.
+Retina supports either:
 
-Required columns:
+- a local synthetic manifest at `data/raw/captions.csv`
+- a Hugging Face image-caption dataset such as `intro/flickr8k`
+
+For local CSV manifests, the required columns are:
 
 ```csv
 image_id,image_path,caption
@@ -14,5 +17,4 @@ Recommended local sample path:
 - `data/raw/images/`
 - `data/raw/captions.csv`
 
-For this pass, a small synthetic sample dataset may be generated locally to validate the pipeline without downloading a large public corpus.
-
+For the measured benchmark pass, `scripts/prepare_dataset.py` can materialize Flickr8k images locally and write the canonical metadata to `data/processed/retina_metadata.jsonl`.

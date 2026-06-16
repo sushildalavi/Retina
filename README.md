@@ -36,13 +36,19 @@ Image-caption dataset
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m scripts.create_sample_dataset --count 50
 make prepare-data
 make embeddings
 make index
 make eval
 make benchmark
 make demo
+```
+
+For the synthetic smoke test only:
+
+```bash
+python -m scripts.create_sample_dataset --count 50
+make prepare-data DATASET=synthetic SAMPLE_SIZE=50
 ```
 
 ## Dataset Format
@@ -56,19 +62,21 @@ img_001,images/img_001.jpg,A dog running through grass
 
 ## Reports
 
-- `reports/dataset_stats.md`
-- [reports/embedding_benchmark.md](reports/embedding_benchmark.md)
-- [reports/retrieval_eval.md](reports/retrieval_eval.md)
-- [reports/runtime_benchmark.md](reports/runtime_benchmark.md)
-- [reports/retrieval_failures.md](reports/retrieval_failures.md)
+- `reports/flickr8k_dataset_stats.md`
+- `reports/flickr8k_embedding_benchmark.md`
+- `reports/flickr8k_retrieval_eval.md`
+- `reports/flickr8k_runtime_benchmark.md`
+- `reports/flickr8k_random_baseline.md`
+- `reports/flickr8k_retrieval_failures.md`
 
 ## Measured Results
 
 Dataset used:
 
-- 50 locally generated image-caption pairs
-- each image is a simple colored shape on a light background
-- manifest generated with `python -m scripts.create_sample_dataset --count 50`
+- Flickr8k
+- sample size: 500 images / 2500 captions
+- split: 400 train, 50 val, 50 test
+- materialized images stored under `data/artifacts/images/flickr8k/`
 
 Model used:
 
@@ -79,28 +87,48 @@ Retrieval:
 
 | Metric | Value |
 | --- | ---: |
-| Recall@1 | 0.30 |
-| Recall@5 | 0.82 |
-| Recall@10 | 0.98 |
-| MRR | 0.5166 |
-| Median rank | 2.0 |
-| Query latency p50 | 12.08 ms |
-| Query latency p95 | 13.97 ms |
+| Recall@1 | 0.6532 |
+| Recall@5 | 0.8856 |
+| Recall@10 | 0.9432 |
+| MRR | 0.7529 |
+| Median rank | 1.0 |
+| Query latency p50 | 11.46 ms |
+| Query latency p95 | 17.85 ms |
+
+Random baseline:
+
+| Metric | Value |
+| --- | ---: |
+| Recall@1 | 0.0028 |
+| Recall@5 | 0.0128 |
+| Recall@10 | 0.0200 |
+| MRR | 0.0144 |
+| Median rank | 248.0 |
 
 Runtime:
 
 | Metric | Value |
 | --- | ---: |
-| Image embeddings/sec | 51.93 |
-| Text embeddings/sec | 51.93 |
-| Search queries/sec | 77.31 |
-| Search latency p50 | 13.10 ms |
-| Search latency p95 | 15.16 ms |
+| Image embeddings/sec | 56.16 |
+| Text embeddings/sec | 280.78 |
+| Search queries/sec | 88.28 |
+| Search latency p50 | 10.92 ms |
+| Search latency p95 | 14.22 ms |
 
 Failure analysis:
 
-- 1 / 50 queries missed the exact image in the top-10 set
-- the failure was a color/shape confusion between similar green shapes
+- 142 / 2500 caption queries missed the exact image in the top-10 set
+- all summarized failures fell into `visually_similar_negative`
+- the failure report focuses on semantically close images, mostly dog/action/scene confusion
+
+Report paths:
+
+- `reports/flickr8k_dataset_stats.json`
+- `reports/flickr8k_embedding_benchmark.json`
+- `reports/flickr8k_retrieval_eval.json`
+- `reports/flickr8k_random_baseline.json`
+- `reports/flickr8k_runtime_benchmark.json`
+- `reports/flickr8k_retrieval_failures.jsonl`
 
 ## Limitations
 
@@ -109,7 +137,8 @@ Failure analysis:
 - no supervised fine-tuning yet
 - no phrase grounding yet
 - no captioning yet unless explicitly added later
-- sample dataset is synthetic and intentionally small for Mac-local validation
+- the synthetic 50-sample dataset remains the fastest smoke test
+- the measured benchmark uses a capped Flickr8k subset to stay Mac-local
 - first run may need CLIP weights downloaded
 
 ## Resume-Safe Summary

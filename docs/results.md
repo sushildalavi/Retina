@@ -2,39 +2,50 @@
 
 Measured local run:
 
-- dataset: 50 locally generated image-caption pairs
+- dataset: Flickr8k
+- sample size: 500 images / 2500 captions
 - model: `openai/clip-vit-base-patch32`
 - device: `mps`
 
 Retrieval metrics:
 
-- Recall@1: 0.30
-- Recall@5: 0.82
-- Recall@10: 0.98
-- MRR: 0.5166
-- median rank: 2.0
-- query latency p50: 12.08 ms
-- query latency p95: 13.97 ms
+- Recall@1: 0.6532
+- Recall@5: 0.8856
+- Recall@10: 0.9432
+- MRR: 0.7529
+- median rank: 1.0
+- query latency p50: 11.46 ms
+- query latency p95: 17.85 ms
+
+Random baseline:
+
+- Recall@1: 0.0028
+- Recall@5: 0.0128
+- Recall@10: 0.0200
+- MRR: 0.0144
+- median rank: 248.0
 
 Runtime metrics:
 
-- image embeddings/sec: 51.93
-- text embeddings/sec: 51.93
-- search queries/sec: 77.31
-- search latency p50: 13.10 ms
-- search latency p95: 15.16 ms
+- image embeddings/sec: 56.16
+- text embeddings/sec: 280.78
+- search queries/sec: 88.28
+- search latency p50: 10.92 ms
+- search latency p95: 14.22 ms
 
 Results are written to:
 
-- `reports/dataset_stats.json`
-- `reports/dataset_stats.md`
-- `reports/embedding_benchmark.json`
-- `reports/embedding_benchmark.md`
-- `reports/retrieval_eval.json`
-- `reports/retrieval_eval.md`
-- `reports/runtime_benchmark.json`
-- `reports/runtime_benchmark.md`
-- `reports/retrieval_failures.jsonl`
-- `reports/retrieval_failures.md`
+- `reports/flickr8k_dataset_stats.json`
+- `reports/flickr8k_dataset_stats.md`
+- `reports/flickr8k_embedding_benchmark.json`
+- `reports/flickr8k_embedding_benchmark.md`
+- `reports/flickr8k_retrieval_eval.json`
+- `reports/flickr8k_retrieval_eval.md`
+- `reports/flickr8k_random_baseline.json`
+- `reports/flickr8k_random_baseline.md`
+- `reports/flickr8k_runtime_benchmark.json`
+- `reports/flickr8k_runtime_benchmark.md`
+- `reports/flickr8k_retrieval_failures.jsonl`
+- `reports/flickr8k_retrieval_failures.md`
 
-The only miss in this run was a visually similar green shape. That is a normal failure mode for a small synthetic dataset with many near-duplicate captions.
+The dominant failure mode in this run was visually similar negatives: semantically close images, mostly dogs, action shots, and scene-level confusion.

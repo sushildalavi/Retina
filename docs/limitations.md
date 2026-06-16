@@ -5,5 +5,6 @@
 - no fine-tuning claim unless a local run is measured
 - grounding is optional
 - captioning is optional
-- dataset scale is intentionally small for local development
-- the measured run uses a synthetic local dataset rather than a public benchmark corpus
+- dataset scale is intentionally capped for local development
+- the measured run uses a capped Flickr8k subset rather than the full benchmark corpus
+- the synthetic 50-sample manifest remains a smoke test, not the primary benchmark
