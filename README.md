@@ -1,184 +1,160 @@
 # Retina
 
-**Content-based visual recommendation system using CLIP embeddings, FAISS indexing, full Flickr8k evaluation, failure analysis, FastAPI, and Gradio.**
+## Visual Intelligence Recommendation Engine
 
-Retina is a Mac-local multimodal visual recommendation engine. It uses CLIP embeddings and a CPU FAISS index to recommend semantically similar images from text, image, and content-profile queries, then evaluates the system with Recall@K, MRR, nDCG@10, latency, throughput, and failure analysis.
+A Mac-local content-based visual recommendation system using CLIP embeddings, FAISS indexing, FastAPI, and React/Gradio interfaces.
 
 ## Architecture
 
 ```text
-Image-caption dataset
-  -> CLIP image/text encoders
-  -> normalized embeddings
-  -> FAISS CPU index
-  -> visual search / semantic recommendations
-  -> Recall@K / MRR evaluation
-  -> failure analysis
-  -> FastAPI + Gradio serving
+Flickr8k images + captions
+  → CLIP ViT-B/32 image/text encoders
+  → normalized embeddings
+  → FAISS CPU index
+  → text / image / profile recommendations
+  → FastAPI backend
+  → React dashboard + Gradio demo
+  → Recall@K / MRR / nDCG / latency / failure analysis
 ```
 
-## Features
+## Key Results
 
-- CLIP image/text embeddings
-- FAISS CPU vector search
-- text-to-image recommendations
-- image-to-image recommendations
-- content-profile recommendations
-- Recall@K and MRR evaluation
-- nDCG@10 and coverage metrics
-- latency and throughput benchmarks
-- retrieval failure analysis
-- FastAPI API
-- Gradio UI
-- Mac / MPS support
+| Metric | Value |
+| --- | ---: |
+| Recall@10 | 0.641925 |
+| MRR | 0.408194 |
+| nDCG@10 | 0.463864 |
+| Random Recall@10 | 0.0012 |
+| p95 end-to-end latency | 14.7 ms |
 
-## Quickstart
+## Recommendation Modes
+
+- Text-to-image
+- Image-to-image
+- Profile-based content recommendations
+
+## What it does
+
+Retina uses CLIP embeddings and a CPU FAISS index to recommend semantically similar images from text, image, and content-profile queries. The project evaluates the system with Recall@K, MRR, MAP@10, nDCG@10, throughput, latency, and failure analysis.
+
+## Local Setup
+
+Backend:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+make api
+```
+
+Frontend:
+
+```bash
+make frontend-install
+make frontend
+```
+
+Gradio demo:
+
+```bash
+make demo
+```
+
+For a full local workflow:
+
+```bash
+make install
 make prepare-data
 make embeddings
 make index
 make eval
 make recommendations
 make benchmark
-make demo
+make failures
+make api
+make frontend-install
+make frontend
 ```
 
-For the synthetic smoke test only:
+If you want to run the React app directly:
 
 ```bash
-python -m scripts.create_sample_dataset --count 50
-make prepare-data DATASET=synthetic SAMPLE_SIZE=50
-```
-
-## Dataset Format
-
-`data/raw/captions.csv`
-
-```csv
-image_id,image_path,caption
-img_001,images/img_001.jpg,A dog running through grass
+cd frontend
+npm install
+npm run dev
 ```
 
 ## Reports
 
-- `reports/flickr8k_full_dataset_stats.md`
-- `reports/flickr8k_full_embedding_benchmark.md`
-- `reports/flickr8k_full_retrieval_eval.md`
-- `reports/flickr8k_full_recommendation_eval.md`
-- `reports/flickr8k_full_runtime_benchmark.md`
-- `reports/flickr8k_full_random_baseline.md`
-- `reports/flickr8k_full_retrieval_failures.md`
+- [Final results](docs/final_results.md)
+- [Runtime benchmarks](docs/runtime_benchmarks.md)
+- [Scaling experiment](docs/scaling_experiment.md)
+- [Failure analysis](docs/error_analysis.md)
+- [Model tradeoffs](docs/model_tradeoffs.md)
+- [Frontend/backend contract](docs/frontend_backend.md)
 
-## Full Benchmark
+## Full Flickr8k Benchmark
 
-Dataset used:
-
-- Flickr8k full
-- 8000 images / 40000 captions
-- splits: 6000 train, 1000 dev, 1000 test
-- materialized images stored under `data/artifacts/images/flickr8k/`
-
-Model used:
-
-- `openai/clip-vit-base-patch32`
-- device: `mps`
-
-Benchmark table:
-
-| Dataset | Images | Captions | Model | Device | R@1 | R@5 | R@10 | MRR | nDCG@10 | FAISS-only search p95 |
-| --- | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Flickr8k | 8000 | 40000 | `openai/clip-vit-base-patch32` | `mps` | 0.3078 | 0.5424 | 0.6419 | 0.4082 | 0.4639 | 0.30 ms |
-
-Baseline table:
-
-| Method | R@1 | R@5 | R@10 | MRR | nDCG@10 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Random | 0.0002 | 0.0006 | 0.0012 | 0.0012 | 0.0006 |
-| CLIP ViT-B/32 | 0.3078 | 0.5424 | 0.6419 | 0.4082 | 0.4639 |
-
-Recommendation modes implemented:
-
-- text-to-image recommendations for caption queries
-- image-to-image recommendations for visually similar items
-- content-profile recommendations from multiple text interests and liked image IDs
-- caption-to-image is covered by the text recommendation path
-
-Recommendation metrics:
-
-| Mode | Precision@1 | Recall@1 | Recall@5 | Recall@10 | MRR | nDCG@10 | FAISS-only search p95 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Text-to-image | 0.3078 | 0.3078 | 0.5424 | 0.6419 | 0.4082 | 0.4639 | 0.30 ms |
-| Profile recommendations | 0.4435 | 0.4435 | 0.6932 | 0.7811 | 0.5494 | 0.6050 | 0.28 ms |
-
-Image-to-image recommendations are reported as qualitative/latency-only behavior:
-
-| Mode | p50 latency | p95 latency | average similarity |
-| --- | ---: | ---: | ---: |
-| Similar images | 0.25 ms | 0.31 ms | 0.8091 |
-
-Runtime:
-
-The embedding throughput and embedding latency numbers below come from the smaller embedding benchmark sample, while the full-benchmark search latency is shown in the table above.
+- Dataset: 8,000 images / 40,000 captions
+- Splits: 6,000 train / 1,000 dev / 1,000 test
+- Model: `openai/clip-vit-base-patch32`
+- Device: `mps`
 
 | Metric | Value |
 | --- | ---: |
-| Image embeddings/sec | 31.92 |
-| Text embeddings/sec | 56.14 |
-| Search queries/sec | 83.05 |
-| End-to-end search latency p50 | 11.59 ms |
-| End-to-end search latency p95 | 14.70 ms |
-| Image embedding p50 | 17.88 ms |
-| Image embedding p95 | 75.47 ms |
-| Text embedding p50 | 21.65 ms |
-| Text embedding p95 | 27.90 ms |
+| Recall@1 | 0.307825 |
+| Recall@5 | 0.542425 |
+| Recall@10 | 0.641925 |
+| MRR | 0.408194 |
+| MAP@10 | 0.408194 |
+| nDCG@10 | 0.463864 |
+| FAISS-only search p95 | 0.307793 ms |
+| End-to-end search p95 | 14.701875 ms |
 
-Failure analysis:
+## Random Baseline
 
-- 14,323 / 40,000 caption queries missed the exact image in the top-10 set
-- dominant failure categories: `multiple_valid_matches` and `visually_similar_negative`
-- failure examples are heavily concentrated in action-heavy bicycle and motocross scenes
+| Metric | Value |
+| --- | ---: |
+| Recall@10 | 0.0012 |
+| MRR | 0.001213 |
+| nDCG@10 | 0.000551 |
 
-API and demo commands:
+CLIP is far above random because it learns semantic alignment between captions and images rather than guessing from the candidate pool.
 
-- `make api`
-- `make demo`
+## Additional Experiments
 
-Report paths:
+- Second model baseline on 500 images: `openai/clip-vit-large-patch14` reached Recall@10 `0.9552`, but end-to-end search p95 rose to `114.11 ms`.
+- Scaling experiment with CLIP ViT-B/32:
+  - 500 images: Recall@10 `0.9376`, MRR `0.7417`, p95 `14.54 ms`
+  - 1000 images: Recall@10 `0.8836`, MRR `0.6593`, p95 `16.88 ms`
+  - 8000 images: Recall@10 `0.641925`, MRR `0.408194`, p95 `14.701875 ms`
 
-- `reports/flickr8k_full_dataset_stats.json`
-- `reports/flickr8k_full_embedding_benchmark.json`
-- `reports/flickr8k_full_retrieval_eval.json`
-- `reports/flickr8k_full_recommendation_eval.json`
-- `reports/flickr8k_full_random_baseline.json`
-- `reports/flickr8k_full_runtime_benchmark.json`
-- `reports/flickr8k_full_retrieval_failures.jsonl`
-- `reports/final_retina_metrics_summary.json`
-- `reports/model_baseline_comparison.json`
-- `reports/scaling_experiment.json`
+## Failure Analysis
+
+- 14,323 misses out of 40,000 caption queries
+- Dominant categories: `multiple_valid_matches`, `visually_similar_negative`
+- Common scenes: bicycle racing, motocross jumps, dogs, and other action-heavy scenes
 
 ## Limitations
 
 - content-based, not collaborative filtering
-- no CUDA
-- no supervised fine-tuning yet
-- no phrase grounding yet
-- no captioning yet unless explicitly added later
-- the synthetic 50-sample dataset remains the fastest smoke test
-- the full Flickr8k benchmark was completed locally on MPS
-- first run may need CLIP weights downloaded
-
-## Additional Experiments
-
-- second-model baseline on 500 images: `openai/clip-vit-large-patch14` reached Recall@10 0.9552, but end-to-end search p95 rose to 114.11 ms
-- scaling experiment with CLIP ViT-B/32:
-  - 500 images: Recall@10 0.9376, MRR 0.7417, p95 14.54 ms
-  - 1000 images: Recall@10 0.8836, MRR 0.6593, p95 16.88 ms
-  - 8000 images: Recall@10 0.6419, MRR 0.4082, p95 14.70 ms
+- no user-behavior personalization
+- no fine-tuned CLIP
+- no production deployment claim
+- Mac-local benchmark
 
 ## Resume-Safe Summary
 
-Built Retina, a content-based visual recommendation system using CLIP embeddings, FAISS CPU indexing, and FastAPI/Gradio serving for text-to-image, image-to-image, and content-profile recommendations, with full Flickr8k evaluation across Recall@K, MRR, nDCG@10, embedding throughput, search latency, and failure analysis.
+Built Retina, a Mac-local content-based visual recommendation system using CLIP ViT-B/32 embeddings, FAISS CPU indexing, and FastAPI/React/Gradio serving; evaluated on full Flickr8k (8K images / 40K captions) with 0.642 Recall@10, 0.408 MRR, 0.464 nDCG@10, and 14.7 ms p95 end-to-end search latency, outperforming random Recall@10 by 535x.
+
+## Source of Truth
+
+- `reports/final_retina_metrics_summary.json`
+- `reports/final_retina_metrics_summary.md`
+- `reports/flickr8k_full_*`
+- `reports/model_baseline_comparison.json`
+- `reports/scaling_experiment.json`
+
+## Notes
+
+- Raw images, embeddings, FAISS indexes, and model weights stay local and are not committed.
+- The React dashboard reads `VITE_API_BASE_URL=http://localhost:8000` by default.
+- The backend serves safe local artifact URLs under `/artifacts/images/...` when possible.

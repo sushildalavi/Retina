@@ -27,7 +27,18 @@ Each recommendation result includes:
 - rank
 - image_id
 - image_path
+- image_url when the backend can safely expose a browser-accessible local artifact path
 - captions
 - score
 - recommendation_reason
 
+## Backend contract
+
+The production-style backend exposes the same modes as JSON endpoints:
+
+- `GET /recommend/text`
+- `GET /recommend/image`
+- `POST /recommend/profile`
+- `POST /search/text` as the compatibility alias
+
+The React dashboard and Gradio demo are both thin clients over the same CLIP/FAISS recommendation engine.

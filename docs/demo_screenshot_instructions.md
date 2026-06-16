@@ -1,37 +1,43 @@
 # Retina Demo Screenshot Instructions
 
-If you want to add a real demo screenshot later, use the local Gradio app and capture the rendered UI yourself.
+Do not fabricate a screenshot. Capture the real local dashboard after the backend and frontend are running.
 
 ## Exact steps
 
-1. Run the demo:
+1. Start the backend:
 
 ```bash
-make demo
+make api
 ```
 
-2. Open the local Gradio URL printed in the terminal.
-3. Use a representative text query such as:
+2. Start the frontend in a second terminal:
+
+```bash
+make frontend
+```
+
+3. Open the Vite URL printed in the terminal, usually `http://localhost:5173`.
+4. Try a representative text query such as:
 
 ```text
 A bicyclist doing a jump trick
 ```
 
-4. Capture the page after results render.
-5. Save the image at:
+5. Also check the profile and similar-image tabs so the screenshot shows the full product shape.
+6. Save the screenshot at:
 
 ```text
-docs/assets/retina_demo.png
+docs/assets/retina_dashboard.png
 ```
 
-6. If you add the screenshot, update the README image link to point at:
+7. Link it from the README with:
 
 ```markdown
-![Retina demo](docs/assets/retina_demo.png)
+![Retina dashboard](docs/assets/retina_dashboard.png)
 ```
 
 ## Notes
 
-- Do not use a fabricated or synthetic screenshot.
-- The UI should show text-to-image, image-to-image, and profile recommendation tabs before taking the capture.
-
+- If the browser cannot render a local `image_path`, rely on the API-provided `image_url` field.
+- Keep raw images, embeddings, and FAISS indexes uncommitted.
+- The screenshot should show the dashboard, backend metadata, and at least one populated results grid.

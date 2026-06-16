@@ -3,6 +3,7 @@ project:
   subtitle: Visual intelligence search engine for image-text retrieval, semantic recommendations, CLIP embeddings, FAISS indexing, evaluation, and local serving.
 
 dataset:
+  name: flickr8k
   input_manifest: data/raw/captions.csv
   output_dir: data/processed
   sample_limit: null
@@ -15,11 +16,21 @@ model:
   device: auto
 
 artifacts:
+  image_dir: data/artifacts/images
   embeddings_dir: data/processed/embeddings
   index_path: data/processed/index/retina_image_index.faiss
   index_meta_path: data/processed/index/retina_image_index.json
   metadata_path: data/processed/retina_metadata.jsonl
   reports_dir: reports
 
+server:
+  host: 127.0.0.1
+  port: 8000
+  cors_origins:
+    - http://localhost:5173
+
 search:
   top_k: 10
+
+setup:
+  command: make all-local

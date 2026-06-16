@@ -1,4 +1,6 @@
 PYTHON ?= /opt/anaconda3/bin/python
+NODE ?= node
+NPM ?= npm
 CONFIG ?= configs/retina.yaml
 REPORT_PREFIX ?=
 DATASET ?= synthetic
@@ -13,13 +15,16 @@ SAMPLE_SIZE_ARG = $(if $(strip $(SAMPLE_SIZE)),--sample-size $(SAMPLE_SIZE),)
 MANIFEST_ARG = $(if $(strip $(MANIFEST)),--manifest $(MANIFEST),)
 OUTPUT_DIR_ARG = $(if $(strip $(OUTPUT_DIR)),--output-dir $(OUTPUT_DIR),)
 
-.PHONY: install test format lint prepare-data embeddings index eval recommendations random-baseline benchmark failures api demo all-local flickr8k-full-data flickr8k-full-embeddings flickr8k-full-index flickr8k-full-eval flickr8k-full-recommendations flickr8k-full-benchmark flickr8k-full-failures
+.PHONY: install test format lint prepare-data embeddings index eval recommendations random-baseline benchmark failures api frontend-install frontend demo all-local flickr8k-full-data flickr8k-full-embeddings flickr8k-full-index flickr8k-full-eval flickr8k-full-recommendations flickr8k-full-benchmark flickr8k-full-failures
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt
 
 test:
 	$(PYTHON) -m pytest -q
+
+recommendations:
+	$(PYTHON) -m scripts.evaluate_recommendations --config $(CONFIG) $(REPORT_ARG)
 
 format:
 	$(PYTHON) -m black . || true
@@ -50,6 +55,14 @@ failures:
 
 api:
 	$(PYTHON) -m scripts.run_api --config $(CONFIG)
+
+frontend-install:
+	cd frontend && $(NPM) install
+
+frontend:
+	@command -v $(NPM) >/dev/null 2>&1 || { echo "Node.js and npm are required. Install Node.js 20+ and run 'make frontend-install'."; exit 1; }
+	@test -d frontend/node_modules || { echo "Frontend dependencies are missing. Run 'make frontend-install' first."; exit 1; }
+	cd frontend && $(NPM) run dev
 
 demo:
 	$(PYTHON) -m scripts.run_gradio_demo --config $(CONFIG)
