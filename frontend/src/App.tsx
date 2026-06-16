@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   ApiError,
@@ -11,7 +11,6 @@ import {
 } from './api';
 import { MetricCard } from './components/MetricCard';
 import { ResultsGrid } from './components/ResultsGrid';
-import { Section } from './components/Section';
 import type {
   FinalMetricsSummary,
   HealthResponse,
@@ -21,6 +20,17 @@ import type {
   ServiceMetadata,
   TextRecommendationResponse,
 } from './types';
+
+type NavId = 'overview' | 'text' | 'image' | 'profile' | 'research' | 'settings';
+
+const NAV_ITEMS: Array<{ id: NavId; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'text', label: 'Text Recommendations' },
+  { id: 'image', label: 'Similar Images' },
+  { id: 'profile', label: 'Profile Recommendations' },
+  { id: 'research', label: 'Research Results' },
+  { id: 'settings', label: 'Settings' },
+];
 
 const DEMO_SERVICE: ServiceMetadata = {
   config_path: 'configs/retina.yaml',
@@ -158,41 +168,8 @@ function formatMilliseconds(value: number) {
   return `${formatNumber(value, value < 10 ? 2 : 1)} ms`;
 }
 
-function formatSeconds(value: number) {
-  return `${formatNumber(value, 1)} s`;
-}
-
 function rangeLabel(sampleSize: number | string) {
   return sampleSize === 'full' ? 'full Flickr8k' : `${sampleSize} images`;
-}
-
-function renderRows(rows: Array<Record<string, string | number>>) {
-  if (!rows.length) {
-    return <div className="empty-state">No rows available.</div>;
-  }
-  const headers = Object.keys(rows[0]);
-  return (
-    <div className="table-wrap">
-      <table className="data-table data-table--wide">
-        <thead>
-          <tr>
-            {headers.map((header) => (
-              <th key={header}>{header.replaceAll('_', ' ')}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index}>
-              {headers.map((header) => (
-                <td key={header}>{row[header] as string | number}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 }
 
 function barList(items: Array<{ label: string; value: number; detail: string; suffix?: string }>) {
@@ -221,13 +198,46 @@ function barList(items: Array<{ label: string; value: number; detail: string; su
   );
 }
 
+function renderRows(rows: Array<Record<string, string | number>>) {
+  if (!rows.length) {
+    return <div className="empty-state">No benchmark rows available.</div>;
+  }
+
+  const columns = Object.keys(rows[0]);
+
+  return (
+    <div className="table-wrap">
+      <table className="data-table data-table--wide">
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column}>{column.replace(/_/g, ' ')}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {columns.map((column) => (
+                <td key={column}>{String(row[column])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function App() {
+  const [nav, setNav] = useState<NavId>('overview');
   const [service, setService] = useState<ServiceMetadata | null>(null);
   const [summary, setSummary] = useState<MetricsSummaryResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [loadingHealth, setLoadingHealth] = useState(true);
   const [startupNotice, setStartupNotice] = useState<string | null>(null);
+  const [motionEnabled, setMotionEnabled] = useState(true);
 
+  const [command, setCommand] = useState('a dog jumping through water');
   const [textQuery, setTextQuery] = useState('A bicyclist doing a jump trick');
   const [textTopK, setTextTopK] = useState(6);
   const [textResult, setTextResult] = useState<TextRecommendationResponse | null>(null);
@@ -247,24 +257,20 @@ function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  const searchRef = useRef<HTMLElement | null>(null);
+  const benchmarksRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     const run = async () => {
-      setLoadingHealth(true);
       const [healthResponse, metadataResponse, summaryResponse] = await Promise.allSettled([
         getHealth(),
         getMetadata(),
         getMetricsSummary(),
       ]);
 
-      if (healthResponse.status === 'fulfilled') {
-        setHealth(healthResponse.value);
-      }
-      if (metadataResponse.status === 'fulfilled') {
-        setService(metadataResponse.value.service);
-      }
-      if (summaryResponse.status === 'fulfilled') {
-        setSummary(summaryResponse.value);
-      }
+      if (healthResponse.status === 'fulfilled') setHealth(healthResponse.value);
+      if (metadataResponse.status === 'fulfilled') setService(metadataResponse.value.service);
+      if (summaryResponse.status === 'fulfilled') setSummary(summaryResponse.value);
 
       if (
         healthResponse.status === 'rejected' ||
@@ -280,12 +286,10 @@ function App() {
                 ? summaryResponse.reason
                 : null;
         const message = reason instanceof ApiError ? reason.message : 'Live backend unavailable';
-        setStartupNotice(`Demo snapshot is shown until the live backend is available. (${message})`);
+        setStartupNotice(`Showing the demo shell until live backend data is available. (${message})`);
       } else {
         setStartupNotice(null);
       }
-
-      setLoadingHealth(false);
     };
 
     void run();
@@ -293,19 +297,28 @@ function App() {
 
   const displaySummary = summary?.metrics ?? DEMO_SUMMARY;
   const displayService = service ?? DEMO_SERVICE;
-  const isDemoMode = !summary?.metrics || !service;
+  const isLive = Boolean(summary?.metrics && service && health?.ready);
 
-  const overviewCards = useMemo(() => {
+  const featureCards = useMemo(() => {
     const retrieval = displaySummary.retrieval;
-    const runtime = displaySummary.runtime;
-    const random = displaySummary.random_baseline;
     return [
       { label: 'Recall@10', value: formatNumber(retrieval.recall_at_10, 3), detail: 'Full Flickr8k retrieval' },
       { label: 'MRR', value: formatNumber(retrieval.mrr, 3), detail: 'Rank quality across caption queries' },
-      { label: 'End-to-end p95', value: formatMilliseconds(runtime.end_to_end_search_p95_ms), detail: 'Text search latency' },
-      { label: 'Random recall@10', value: formatNumber(random.recall_at_10, 4), detail: 'Uniform random baseline', tone: 'muted' as const },
+      { label: 'nDCG@10', value: formatNumber(retrieval.ndcg_at_10, 3), detail: 'Ranking quality at cutoff 10' },
+      { label: 'End-to-end p95', value: formatMilliseconds(retrieval.end_to_end_text_search_latency_p95_ms), detail: 'Text search latency' },
+      { label: 'Random recall@10', value: formatNumber(displaySummary.random_baseline.recall_at_10, 4), detail: 'Uniform random baseline', tone: 'muted' as const },
+      { label: 'Profile recall@10', value: formatNumber(displaySummary.recommendation.profile.recall_at_10, 3), detail: 'Blended content profiles' },
     ];
   }, [displaySummary]);
+
+  const jumpTo = (section: NavId) => {
+    setNav(section);
+    if (section === 'search') {
+      searchRef.current?.scrollIntoView({ behavior: motionEnabled ? 'smooth' : 'auto', block: 'start' });
+    } else if (section === 'research') {
+      benchmarksRef.current?.scrollIntoView({ behavior: motionEnabled ? 'smooth' : 'auto', block: 'start' });
+    }
+  };
 
   const onTextSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -313,6 +326,7 @@ function App() {
     setTextLoading(true);
     try {
       setTextResult(await recommendText(textQuery, textTopK));
+      setNav('text');
     } catch (error) {
       setTextError(error instanceof ApiError ? error.message : 'Text recommendation failed');
     } finally {
@@ -326,6 +340,7 @@ function App() {
     setImageLoading(true);
     try {
       setImageResult(await recommendImage(imageId, imageTopK));
+      setNav('image');
     } catch (error) {
       setImageError(error instanceof ApiError ? error.message : 'Image recommendation failed');
     } finally {
@@ -347,6 +362,7 @@ function App() {
       .filter(Boolean);
     try {
       setProfileResult(await recommendProfile(textQueries, likedImageIds, profileTopK));
+      setNav('profile');
     } catch (error) {
       setProfileError(error instanceof ApiError ? error.message : 'Profile recommendation failed');
     } finally {
@@ -355,104 +371,522 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
-      <div className="bg-orb bg-orb--one" />
-      <div className="bg-orb bg-orb--two" />
-
-      <header className="hero">
-        <div className="hero__copy">
-          <div className="hero__eyebrow-row">
-            <div className="eyebrow">Retina</div>
-            <span className="status-chip status-chip--accent">{isDemoMode ? 'Demo snapshot' : 'Live service'}</span>
-          </div>
-          <h1>Visual search for text, image, and content-profile queries.</h1>
-          <p className="hero__lede">
-            Retina is a retrieval-first ML system built around frozen CLIP and FAISS. The interface is intentionally
-            focused on the pieces that matter: search, recommendations, and benchmark inspection.
-          </p>
-          <div className="hero__actions">
-            <a className="primary-button" href="#search">
-              Start searching
-            </a>
-            <a className="ghost-button" href="#benchmarks">
-              View benchmarks
-            </a>
-          </div>
-          <div className="hero__badges">
-            <span>Frozen CLIP baseline</span>
-            <span>Full Flickr8k benchmark</span>
-            <span>FastAPI + React</span>
-            <span>CPU / MPS friendly</span>
-          </div>
+    <div className="shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand__mark">Retina</div>
         </div>
+        <nav className="nav" aria-label="Retina sections">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav__item ${nav === item.id ? 'nav__item--active' : ''}`}
+              onClick={() => jumpTo(item.id)}
+            >
+              <span className="nav__dot" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-        <aside className="hero__aside">
-          <div className="status-card status-card--hero">
-            <div className="status-card__label">System</div>
-            <div className="status-card__value">{health?.status ?? (loadingHealth ? 'loading' : 'ready')}</div>
-            <div className="status-card__detail">
-              {displayService.model_name} · {displayService.dataset_name} · {displayService.device}
+        <div className="sidebar__footer">
+          <div className="status-panel">
+            <div className="status-panel__label">System status</div>
+            <div className="status-panel__value">{isLive ? 'Connected' : 'Demo ready'}</div>
+            <div className="status-panel__detail">
+              {displayService.model_name}
+              <br />
+              {displayService.device.toUpperCase()}
             </div>
           </div>
-          <div className="hero__stack">
-            <article className="status-card status-card--compact">
-              <div className="status-card__label">Indexed corpus</div>
-              <div className="status-card__value">{formatInteger(displayService.indexed_image_count)} images</div>
-              <div className="status-card__detail">{formatInteger(displayService.indexed_caption_count)} captions</div>
-            </article>
-            <article className="status-card status-card--compact">
-              <div className="status-card__label">Setup command</div>
-              <div className="status-card__value">{displayService.setup_command}</div>
-            </article>
+          <button className="secondary-button" type="button" onClick={() => jumpTo('overview')}>
+            Collapse
+          </button>
+        </div>
+      </aside>
+
+      <div className="workspace">
+        <header className="topbar">
+          <form
+            className="omnibox"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setTextQuery(command);
+              jumpTo('text');
+            }}
+          >
+            <span className="omnibox__icon">⌕</span>
+            <input
+              value={command}
+              onChange={(event) => setCommand(event.target.value)}
+              placeholder="Search queries, images, or commands..."
+            />
+            <kbd>⌘ K</kbd>
+          </form>
+
+          <div className="topbar__actions">
+            <button
+              className={`motion-toggle ${motionEnabled ? 'motion-toggle--on' : ''}`}
+              type="button"
+              onClick={() => setMotionEnabled((value) => !value)}
+            >
+              <span>Motion</span>
+              <span className="motion-toggle__switch" />
+            </button>
+            <button className="icon-button" type="button" aria-label="Theme toggle">
+              ☼
+            </button>
+            <button className="user-chip" type="button" aria-label="User menu">
+              <span className="user-chip__title">Researcher</span>
+              <span className="user-chip__avatar">R</span>
+              <span className="user-chip__caret">⌄</span>
+            </button>
           </div>
-        </aside>
-      </header>
+        </header>
 
-      {startupNotice ? <div className="banner banner--info">{startupNotice}</div> : null}
+        <main className={`page ${motionEnabled ? 'page--motion' : 'page--static'}`}>
+          <section className="hero" id="overview">
+            <div className="hero__copy">
+              <div className="eyebrow">Overview</div>
+              <h1>Visual intelligence, powered by recommendations</h1>
+              <p>
+                Retina is a visual intelligence engine that understands text, images, and profiles to surface the most
+                relevant results fast.
+              </p>
+            </div>
 
-      <main className="stack">
-        <Section title="Dashboard" description="Everything below is the useful surface area of the app.">
-          <div className="metric-grid">
-            {overviewCards.map((card) => (
+            <aside className="hero__sidecard">
+              <div className="card-head">
+                <div>
+                  <div className="card-head__eyebrow">Corpus</div>
+                  <h2>Flickr8k full</h2>
+                </div>
+                <span className="badge badge--good">Indexed</span>
+              </div>
+              <dl className="stats-list">
+                <div>
+                  <dt>Images</dt>
+                  <dd>{formatInteger(displaySummary.dataset.images)}</dd>
+                </div>
+                <div>
+                  <dt>Captions</dt>
+                  <dd>{formatInteger(displaySummary.dataset.captions)}</dd>
+                </div>
+                <div>
+                  <dt>Model</dt>
+                  <dd>{displayService.model_name}</dd>
+                </div>
+                <div>
+                  <dt>Device</dt>
+                  <dd>{displayService.device.toUpperCase()}</dd>
+                </div>
+              </dl>
+            </aside>
+          </section>
+
+          {startupNotice ? <div className="banner banner--info">{startupNotice}</div> : null}
+
+          <section className="metrics">
+            {featureCards.map((card) => (
               <MetricCard key={card.label} {...card} />
             ))}
-          </div>
-        </Section>
+          </section>
 
-        <Section id="search" title="Search" description="Run the three local recommendation flows.">
-          <div className="search-grid">
-            <article className="search-card">
-              <div className="search-card__header">
+          <section className="quick-actions">
+            <div className="quick-actions__label">Quick actions</div>
+            <button className="quick-action" type="button" onClick={() => jumpTo('text')}>
+              <span className="quick-action__icon">⌕</span>
+              <span>
+                <strong>Try a query</strong>
+                <small>Search text or image</small>
+              </span>
+              <span className="quick-action__arrow">→</span>
+            </button>
+            <button className="quick-action" type="button" onClick={() => jumpTo('research')}>
+              <span className="quick-action__icon">▣</span>
+              <span>
+                <strong>Open benchmarks</strong>
+                <small>View latest results</small>
+              </span>
+              <span className="quick-action__arrow">→</span>
+            </button>
+            <button className="quick-action" type="button" onClick={() => jumpTo('settings')}>
+              <span className="quick-action__icon">☰</span>
+              <span>
+                <strong>View model tradeoffs</strong>
+                <small>Compare settings</small>
+              </span>
+              <span className="quick-action__arrow">→</span>
+            </button>
+          </section>
+
+          <section className="mode-grid" id="search" ref={searchRef}>
+            <article className="mode-card mode-card--text">
+              <div className="mode-card__header">
+                <div className="mode-card__icon">T</div>
                 <div>
-                  <h3>Text search</h3>
-                  <p>Search images from a natural-language query.</p>
+                  <h3>Text-to-image</h3>
+                  <p>Describe what you are looking for and find the best matching images.</p>
                 </div>
               </div>
-              <form className="form-grid form-grid--stacked" onSubmit={onTextSubmit}>
-                <label>
-                  <span>Query</span>
-                  <textarea value={textQuery} onChange={(event) => setTextQuery(event.target.value)} rows={4} />
-                </label>
-                <label>
-                  <span>Top-k</span>
-                  <input type="number" min={1} max={100} value={textTopK} onChange={(event) => setTextTopK(Number(event.target.value))} />
-                </label>
-                <button className="primary-button" type="submit" disabled={textLoading}>
-                  {textLoading ? 'Searching…' : 'Search'}
-                </button>
-              </form>
-              {textError ? <div className="banner banner--error">{textError}</div> : null}
-              <ResultsGrid results={textResult?.results || []} emptyLabel="Run a query to see results." />
+              <button className="mode-card__cta" type="button" onClick={() => setNav('text')}>
+                Try text search <span>→</span>
+              </button>
             </article>
 
-            <article className="search-card">
-              <div className="search-card__header">
+            <article className="mode-card mode-card--image">
+              <div className="mode-card__header">
+                <div className="mode-card__icon">◫</div>
                 <div>
-                  <h3>Similar images</h3>
-                  <p>Look up nearest neighbors from an existing image ID.</p>
+                  <h3>Similar Images</h3>
+                  <p>Find visually similar images using an example image.</p>
                 </div>
               </div>
-              <form className="form-grid form-grid--stacked" onSubmit={onImageSubmit}>
+              <button className="mode-card__cta" type="button" onClick={() => setNav('image')}>
+                Find similar <span>→</span>
+              </button>
+            </article>
+
+            <article className="mode-card mode-card--profile">
+              <div className="mode-card__header">
+                <div className="mode-card__icon">◔</div>
+                <div>
+                  <h3>Profile Recommendations</h3>
+                  <p>Get recommendations based on interests and history.</p>
+                </div>
+              </div>
+              <button className="mode-card__cta" type="button" onClick={() => setNav('profile')}>
+                Open recommendations <span>→</span>
+              </button>
+            </article>
+          </section>
+
+          <section className="benchmarks" id="research" ref={benchmarksRef}>
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">Research Results</div>
+                <h2>Measured retrieval performance, tradeoffs, and failure modes</h2>
+                <p>Empirical results on Flickr8k with ablation experiments.</p>
+              </div>
+            </div>
+
+            <div className="benchmarks__grid">
+              <article className="bench-card bench-card--table">
+                <div className="card-head">
+                  <div>
+                    <div className="card-head__eyebrow">Benchmark results</div>
+                    <h3>Flickr8k full</h3>
+                  </div>
+                  <span className="badge badge--quiet">Indexed</span>
+                </div>
+                {renderRows([
+                  {
+                    images: displaySummary.dataset.images,
+                    captions: displaySummary.dataset.captions,
+                    recall_at_10: formatNumber(displaySummary.retrieval.recall_at_10, 3),
+                    mrr: formatNumber(displaySummary.retrieval.mrr, 3),
+                    ndcg_at_10: formatNumber(displaySummary.retrieval.ndcg_at_10, 3),
+                    p95_latency: formatMilliseconds(displaySummary.retrieval.end_to_end_text_search_latency_p95_ms),
+                  },
+                ])}
+              </article>
+
+              <article className="bench-card bench-card--tradeoff">
+                <div className="card-head">
+                  <div>
+                    <div className="card-head__eyebrow">Model tradeoff</div>
+                    <h3>Quality vs speed</h3>
+                  </div>
+                  <button className="text-button" type="button" onClick={() => setNav('settings')}>
+                    View details →
+                  </button>
+                </div>
+                {barList([
+                  {
+                    label: 'Recall@10',
+                    value: displaySummary.recommendation.image_to_image.recall_at_10,
+                    detail: 'Image-to-image retrieval',
+                  },
+                  {
+                    label: 'MRR',
+                    value: displaySummary.recommendation.text_to_image.mrr,
+                    detail: 'Text query ranking',
+                  },
+                  {
+                    label: 'nDCG@10',
+                    value: displaySummary.recommendation.profile.ndcg_at_10,
+                    detail: 'Profile ranking quality',
+                  },
+                  {
+                    label: 'p95 latency',
+                    value: displaySummary.retrieval.end_to_end_text_search_latency_p95_ms,
+                    detail: 'End-to-end search latency',
+                    suffix: ' ms',
+                  },
+                ])}
+              </article>
+
+              <article className="bench-card bench-card--scale">
+                <div className="card-head">
+                  <div>
+                    <div className="card-head__eyebrow">Scaling experiment</div>
+                    <h3>ViT-B/32</h3>
+                  </div>
+                </div>
+                {renderRows(
+                  displaySummary.scaling_experiment.map((row) => ({
+                    sample_size: rangeLabel(row.sample_size),
+                    recall_at_10: formatNumber(row.recall_at_10, 3),
+                    mrr: formatNumber(row.mrr, 3),
+                    p95_latency: formatMilliseconds(row.search_latency_p95_ms),
+                  })),
+                )}
+              </article>
+
+              <article className="bench-card bench-card--failure">
+                <div className="card-head">
+                  <div>
+                    <div className="card-head__eyebrow">Failure analysis</div>
+                    <h3>{formatInteger(displaySummary.failure_analysis.failure_count)} / {formatInteger(displaySummary.failure_analysis.query_count)} misses</h3>
+                  </div>
+                  <button className="text-button" type="button">
+                    View all cases →
+                  </button>
+                </div>
+                <div className="failure-bars">
+                  {displaySummary.failure_analysis.dominant_categories.map((item, index) => (
+                    <div className="failure-bar" key={item}>
+                      <div className="failure-bar__label">{item}</div>
+                      <div className="failure-bar__track">
+                        <div className="failure-bar__fill" style={{ width: `${72 - index * 18}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="chips">
+                  {['people', 'animals', 'vehicles', 'indoor', 'outdoor'].map((item) => (
+                    <span key={item} className="chip">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </article>
+
+              <article className="bench-card bench-card--recommendations">
+                <div className="card-head">
+                  <div>
+                    <div className="card-head__eyebrow">Recommendations</div>
+                    <h3>Core modes</h3>
+                  </div>
+                </div>
+                <div className="recommendation-links">
+                  <button className="recommendation-link" type="button" onClick={() => setNav('text')}>
+                    <span>
+                      <strong>Text-to-image</strong>
+                      <small>Describe what you are looking for</small>
+                    </span>
+                    <span>→</span>
+                  </button>
+                  <button className="recommendation-link" type="button" onClick={() => setNav('image')}>
+                    <span>
+                      <strong>Similar images</strong>
+                      <small>Find visually similar images</small>
+                    </span>
+                    <span>→</span>
+                  </button>
+                  <button className="recommendation-link" type="button" onClick={() => setNav('profile')}>
+                    <span>
+                      <strong>Profile recommendations</strong>
+                      <small>Personalized content blends</small>
+                    </span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </article>
+
+              <article className="bench-card bench-card--claim">
+                <div className="card-head">
+                  <div>
+                    <div className="card-head__eyebrow">What not to claim</div>
+                    <h3>Keep the framing honest</h3>
+                  </div>
+                </div>
+                <div className="chips">
+                  {displaySummary.must_not_claim.map((item) => (
+                    <span key={item} className="chip chip--muted">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section className="details">
+            <div className="details__header">
+              <div>
+                <div className="eyebrow">Model + data</div>
+                <h2>Useful internal state</h2>
+              </div>
+            </div>
+            <div className="details__grid">
+              <article className="detail-card">
+                <div className="detail-card__label">Dataset</div>
+                <div className="detail-card__value">{displaySummary.dataset.name}</div>
+                <div className="detail-card__meta">
+                  {formatInteger(displaySummary.dataset.images)} images
+                  <br />
+                  {formatInteger(displaySummary.dataset.captions)} captions
+                </div>
+              </article>
+              <article className="detail-card">
+                <div className="detail-card__label">Model</div>
+                <div className="detail-card__value">{displayService.model_name}</div>
+                <div className="detail-card__meta">{displayService.device.toUpperCase()}</div>
+              </article>
+              <article className="detail-card">
+                <div className="detail-card__label">Latency</div>
+                <div className="detail-card__value">{formatMilliseconds(displaySummary.retrieval.end_to_end_text_search_latency_p95_ms)}</div>
+                <div className="detail-card__meta">Text search p95</div>
+              </article>
+              <article className="detail-card">
+                <div className="detail-card__label">Baseline gap</div>
+                <div className="detail-card__value">{formatNumber(displaySummary.retrieval.recall_at_10 / displaySummary.random_baseline.recall_at_10, 0)}x</div>
+                <div className="detail-card__meta">Recall@10 versus random</div>
+              </article>
+            </div>
+          </section>
+
+          <section className="workflow" id="text">
+            <div className="workflow__header">
+              <div>
+                <div className="eyebrow">Text Recommendations</div>
+                <h2>Search by intent, get visually relevant results</h2>
+              </div>
+              <aside className="insight-card">
+                <div className="insight-card__title">Query insights</div>
+                <dl>
+                  <div>
+                    <dt>Mode</dt>
+                    <dd>text-to-image</dd>
+                  </div>
+                  <div>
+                    <dt>Latency (p95)</dt>
+                    <dd>{formatMilliseconds(displaySummary.retrieval.end_to_end_text_search_latency_p95_ms)}</dd>
+                  </div>
+                  <div>
+                    <dt>Retrieved from</dt>
+                    <dd>{formatInteger(displaySummary.dataset.images)} images / {formatInteger(displaySummary.dataset.captions)} captions</dd>
+                  </div>
+                  <div>
+                    <dt>Alignment</dt>
+                    <dd>Strong semantic alignment</dd>
+                  </div>
+                </dl>
+              </aside>
+            </div>
+
+            <div className="workflow__body">
+              <div className="query-shell">
+                <form className="query-card" onSubmit={onTextSubmit}>
+                  <div className="query-field">
+                    <span className="query-field__icon">⌕</span>
+                    <input value={textQuery} onChange={(event) => setTextQuery(event.target.value)} />
+                    <button className="icon-action" type="submit" disabled={textLoading}>
+                      Search
+                      <span>→</span>
+                    </button>
+                  </div>
+                  <div className="filter-row">
+                    <button type="button" className="filter-pill">
+                      Top-k {textTopK}
+                    </button>
+                    <button type="button" className="filter-pill">
+                      Similarity
+                    </button>
+                    <button type="button" className="filter-pill">
+                      Flickr8k
+                    </button>
+                    <button type="button" className="filter-pill">
+                      CLIP ViT-B/32
+                    </button>
+                    <button type="button" className="filter-link">
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="query-grid">
+                    <label>
+                      <span>Top-k</span>
+                      <input type="number" min={1} max={100} value={textTopK} onChange={(event) => setTextTopK(Number(event.target.value))} />
+                    </label>
+                    <label>
+                      <span>Query notes</span>
+                      <input value="Semantic match" readOnly />
+                    </label>
+                  </div>
+                  <div className="query-note">Showing {textResult?.results.length || 6} results ranked by similarity.</div>
+                </form>
+
+                <div className="query-side">
+                  <article className="why-card">
+                    <div className="why-card__title">Why these results</div>
+                    <div className="why-card__items">
+                      {['Semantic match', 'Visual alignment', 'Context similarity', 'Ranking signals'].map((item) => (
+                        <div className="why-item" key={item}>
+                          <div className="why-item__dot" />
+                          <div>
+                            <strong>{item}</strong>
+                            <p>
+                              {item === 'Semantic match'
+                                ? 'Captions explicitly mention the query concept.'
+                                : item === 'Visual alignment'
+                                  ? 'Motion, composition, and scene structure line up.'
+                                  : item === 'Context similarity'
+                                    ? 'Scene, setting, and objects align with intent.'
+                                    : 'CLIP similarity and caption relevance balance ranking.'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="why-card why-card--warning">
+                    <div className="why-card__title">Failure watchlist</div>
+                    <div className="why-card__items">
+                      {['Visually similar negatives', 'Multiple valid captions'].map((item) => (
+                        <div className="why-item" key={item}>
+                          <div className="why-item__dot" />
+                          <div>
+                            <strong>{item}</strong>
+                            <p>
+                              {item === 'Visually similar negatives'
+                                ? 'Background or outdoor scenes may look similar.'
+                                : 'One image can match many captions; ranking balances relevance and diversity.'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              {textError ? <div className="banner banner--error">{textError}</div> : null}
+              <ResultsGrid results={textResult?.results || []} emptyLabel="Run a query to see image recommendations." />
+            </div>
+          </section>
+
+          <section className="workflow workflow--compact" id="image">
+            <div className="workflow__header">
+              <div>
+                <div className="eyebrow">Similar Images</div>
+                <h2>Find visually similar images from an example</h2>
+              </div>
+            </div>
+            <div className="workflow__body workflow__body--stacked">
+              <form className="compact-form" onSubmit={onImageSubmit}>
                 <label>
                   <span>Image ID</span>
                   <input value={imageId} onChange={(event) => setImageId(event.target.value)} />
@@ -467,135 +901,85 @@ function App() {
               </form>
               {imageError ? <div className="banner banner--error">{imageError}</div> : null}
               <ResultsGrid results={imageResult?.results || []} emptyLabel="Run an image lookup to see neighbors." />
-            </article>
+            </div>
+          </section>
 
-            <article className="search-card">
-              <div className="search-card__header">
-                <div>
-                  <h3>Profile recommendations</h3>
-                  <p>Blend text interests and liked image IDs into one vector.</p>
-                </div>
+          <section className="workflow" id="profile">
+            <div className="workflow__header">
+              <div>
+                <div className="eyebrow">Profile Recommendations</div>
+                <h2>Blend interests and history into one content profile</h2>
               </div>
-              <form className="form-grid form-grid--stacked" onSubmit={onProfileSubmit}>
-                <label>
-                  <span>Text interests, one per line</span>
-                  <textarea value={profileText} onChange={(event) => setProfileText(event.target.value)} rows={5} />
-                </label>
-                <label>
-                  <span>Liked image IDs</span>
-                  <textarea value={likedIds} onChange={(event) => setLikedIds(event.target.value)} rows={3} />
-                </label>
-                <label>
-                  <span>Top-k</span>
-                  <input type="number" min={1} max={100} value={profileTopK} onChange={(event) => setProfileTopK(Number(event.target.value))} />
-                </label>
-                <button className="primary-button" type="submit" disabled={profileLoading}>
-                  {profileLoading ? 'Building profile…' : 'Recommend'}
-                </button>
-              </form>
+            </div>
+            <div className="workflow__body">
+              <div className="query-shell query-shell--profile">
+                <form className="query-card" onSubmit={onProfileSubmit}>
+                  <label>
+                    <span>Text interests, one per line</span>
+                    <textarea value={profileText} onChange={(event) => setProfileText(event.target.value)} rows={5} />
+                  </label>
+                  <label>
+                    <span>Liked image IDs</span>
+                    <textarea value={likedIds} onChange={(event) => setLikedIds(event.target.value)} rows={3} />
+                  </label>
+                  <label>
+                    <span>Top-k</span>
+                    <input type="number" min={1} max={100} value={profileTopK} onChange={(event) => setProfileTopK(Number(event.target.value))} />
+                  </label>
+                  <button className="primary-button" type="submit" disabled={profileLoading}>
+                    {profileLoading ? 'Building profile…' : 'Recommend'}
+                  </button>
+                </form>
+                <aside className="query-side">
+                  <article className="why-card">
+                    <div className="why-card__title">Profile builder</div>
+                    <div className="why-item">
+                      <div className="why-item__dot" />
+                      <div>
+                        <strong>Vector blend</strong>
+                        <p>Average the entered text and liked-image embeddings into one recommendation vector.</p>
+                      </div>
+                    </div>
+                  </article>
+                </aside>
+              </div>
               {profileError ? <div className="banner banner--error">{profileError}</div> : null}
               <ResultsGrid results={profileResult?.results || []} emptyLabel="Run a profile query to see recommendations." />
-            </article>
-          </div>
-        </Section>
+            </div>
+          </section>
 
-        <Section
-          id="benchmarks"
-          title="Benchmarks"
-          description="Retrieval quality, runtime, and failure analysis from the full local run."
-        >
-          <div className="bench-grid">
-            <article className="subpanel subpanel--chart">
-              <h3>Retrieval quality</h3>
-              {barList([
-                { label: 'Recall@1', value: displaySummary.retrieval.recall_at_1, detail: 'Top-1 hit rate' },
-                { label: 'Recall@5', value: displaySummary.retrieval.recall_at_5, detail: 'Top-5 coverage' },
-                { label: 'Recall@10', value: displaySummary.retrieval.recall_at_10, detail: 'Top-10 coverage' },
-                { label: 'MRR', value: displaySummary.retrieval.mrr, detail: 'Mean reciprocal rank' },
-              ])}
-            </article>
-
-            <article className="subpanel subpanel--chart">
-              <h3>Runtime</h3>
-              {barList([
-                {
-                  label: 'Image embedding p95',
-                  value: displaySummary.runtime.image_embedding_p95_ms,
-                  detail: 'Single-image encoding',
-                  suffix: ' ms',
-                },
-                {
-                  label: 'Text embedding p95',
-                  value: displaySummary.runtime.text_embedding_p95_ms,
-                  detail: 'Single-caption encoding',
-                  suffix: ' ms',
-                },
-                {
-                  label: 'End-to-end p95',
-                  value: displaySummary.runtime.end_to_end_search_p95_ms,
-                  detail: 'Search including retrieval',
-                  suffix: ' ms',
-                },
-                {
-                  label: 'Search queries/sec',
-                  value: displaySummary.runtime.search_queries_per_sec,
-                  detail: 'Query throughput',
-                  suffix: ' qps',
-                },
-              ])}
-            </article>
-
-            <article className="subpanel">
-              <h3>Benchmark summary</h3>
-              {renderRows([
-                {
-                  dataset: displaySummary.dataset.name,
-                  images: displaySummary.dataset.images,
-                  captions: displaySummary.dataset.captions,
-                  recall_at_10: formatNumber(displaySummary.retrieval.recall_at_10, 3),
-                  mrr: formatNumber(displaySummary.retrieval.mrr, 3),
-                  ndcg_at_10: formatNumber(displaySummary.retrieval.ndcg_at_10, 3),
-                  latency_p95_ms: formatMilliseconds(displaySummary.retrieval.end_to_end_text_search_latency_p95_ms),
-                },
-              ])}
-            </article>
-
-            <article className="subpanel">
-              <h3>Failure modes</h3>
-              <div className="stack-list stack-list--chips">
-                {displaySummary.failure_analysis.dominant_categories.map((item) => (
-                  <span key={item}>{item}</span>
-                ))}
+          <section className="settings" id="settings">
+            <div className="settings__header">
+              <div>
+                <div className="eyebrow">Settings</div>
+                <h2>Model and claim guardrails</h2>
               </div>
-              <p className="subtle">
-                Misses cluster around multiple-valid-caption scenes, action ambiguity, and small-object retrieval cases.
-              </p>
-            </article>
-
-            <article className="subpanel">
-              <h3>Scaling experiment</h3>
-              {renderRows(
-                displaySummary.scaling_experiment.map((row) => ({
-                  sample_size: rangeLabel(row.sample_size),
-                  recall_at_10: formatNumber(row.recall_at_10, 3),
-                  mrr: formatNumber(row.mrr, 3),
-                  latency_p95_ms: formatMilliseconds(row.search_latency_p95_ms),
-                  runtime_s: formatSeconds(row.total_runtime_seconds),
-                })),
-              )}
-            </article>
-
-            <article className="subpanel">
-              <h3>What to claim</h3>
-              <div className="stack-list">
-                {displaySummary.must_not_claim.map((item) => (
-                  <span key={item}>{item}</span>
-                ))}
-              </div>
-            </article>
-          </div>
-        </Section>
-      </main>
+            </div>
+            <div className="settings__grid">
+              <article className="setting-card">
+                <div className="setting-card__label">Model</div>
+                <div className="setting-card__value">{displayService.model_name}</div>
+                <div className="setting-card__meta">{displayService.device.toUpperCase()}</div>
+              </article>
+              <article className="setting-card">
+                <div className="setting-card__label">Corpus</div>
+                <div className="setting-card__value">{displaySummary.dataset.name}</div>
+                <div className="setting-card__meta">{formatInteger(displaySummary.dataset.images)} images</div>
+              </article>
+              <article className="setting-card">
+                <div className="setting-card__label">Do not claim</div>
+                <div className="chips">
+                  {displaySummary.must_not_claim.map((item) => (
+                    <span key={item} className="chip chip--muted">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
