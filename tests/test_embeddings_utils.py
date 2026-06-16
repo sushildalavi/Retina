@@ -19,3 +19,6 @@ def test_select_device_auto_returns_supported_device():
     device = select_device("auto")
     assert device in {"cpu", "mps"}
 
+
+def test_select_device_honors_override():
+    assert select_device("cpu") == "cpu"
