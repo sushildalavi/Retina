@@ -11,5 +11,6 @@ Workflow:
 5. evaluate using Recall@K, MRR, and rank statistics
 6. save failure cases and runtime measurements
 
-This keeps the project Mac-friendly while still exercising the full MLE loop.
+Current validation run used a synthetic local sample dataset of 50 image-caption pairs generated on the Mac to keep the pipeline fully local and reproducible.
 
+This keeps the project Mac-friendly while still exercising the full MLE loop.

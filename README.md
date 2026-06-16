@@ -36,6 +36,7 @@ Image-caption dataset
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python -m scripts.create_sample_dataset --count 50
 make prepare-data
 make embeddings
 make index
@@ -56,9 +57,50 @@ img_001,images/img_001.jpg,A dog running through grass
 ## Reports
 
 - `reports/dataset_stats.md`
-- `reports/retina_retrieval_eval.md`
-- `reports/retina_runtime_benchmark.md`
-- `reports/retina_retrieval_failures.md`
+- [reports/embedding_benchmark.md](reports/embedding_benchmark.md)
+- [reports/retrieval_eval.md](reports/retrieval_eval.md)
+- [reports/runtime_benchmark.md](reports/runtime_benchmark.md)
+- [reports/retrieval_failures.md](reports/retrieval_failures.md)
+
+## Measured Results
+
+Dataset used:
+
+- 50 locally generated image-caption pairs
+- each image is a simple colored shape on a light background
+- manifest generated with `python -m scripts.create_sample_dataset --count 50`
+
+Model used:
+
+- `openai/clip-vit-base-patch32`
+- device: `mps`
+
+Retrieval:
+
+| Metric | Value |
+| --- | ---: |
+| Recall@1 | 0.30 |
+| Recall@5 | 0.82 |
+| Recall@10 | 0.98 |
+| MRR | 0.5166 |
+| Median rank | 2.0 |
+| Query latency p50 | 12.08 ms |
+| Query latency p95 | 13.97 ms |
+
+Runtime:
+
+| Metric | Value |
+| --- | ---: |
+| Image embeddings/sec | 51.93 |
+| Text embeddings/sec | 51.93 |
+| Search queries/sec | 77.31 |
+| Search latency p50 | 13.10 ms |
+| Search latency p95 | 15.16 ms |
+
+Failure analysis:
+
+- 1 / 50 queries missed the exact image in the top-10 set
+- the failure was a color/shape confusion between similar green shapes
 
 ## Limitations
 
@@ -67,9 +109,9 @@ img_001,images/img_001.jpg,A dog running through grass
 - no supervised fine-tuning yet
 - no phrase grounding yet
 - no captioning yet unless explicitly added later
+- sample dataset is synthetic and intentionally small for Mac-local validation
 - first run may need CLIP weights downloaded
 
 ## Resume-Safe Summary
 
 Built Retina, a visual intelligence search engine using CLIP embeddings, FAISS CPU indexing, and FastAPI/Gradio serving for semantic image recommendations, with evaluation across Recall@K, MRR, embedding throughput, search latency, and retrieval failure analysis on an image-caption dataset.
-
