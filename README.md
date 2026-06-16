@@ -2,7 +2,32 @@
 
 ## Visual Intelligence Recommendation Engine
 
-A Mac-local content-based visual recommendation system using CLIP embeddings, FAISS indexing, FastAPI, and React/Gradio interfaces.
+A Mac-local content-based visual recommendation system using CLIP embeddings, FAISS indexing, FastAPI, React, and Gradio.
+
+## Key Metrics
+
+| Metric | Value |
+| --- | ---: |
+| Dataset | Flickr8k full |
+| Images / captions | 8K / 40K |
+| Recall@10 | 0.642 |
+| MRR | 0.408 |
+| nDCG@10 | 0.464 |
+| Random Recall@10 | 0.0012 |
+| End-to-end p95 latency | 14.7 ms |
+
+## Screenshots
+
+Real dashboard screenshots are not bundled yet. Follow [docs/demo_screenshot_instructions.md](docs/demo_screenshot_instructions.md) to capture them locally.
+For a short recorded walkthrough script, see [docs/demo_video_instructions.md](docs/demo_video_instructions.md).
+
+## Start Here
+
+- [Final results](docs/final_results.md)
+- [Recommendation system](docs/recommendation_system.md)
+- [Runtime benchmarks](docs/runtime_benchmarks.md)
+- [Error analysis](docs/error_analysis.md)
+- [Model tradeoffs](docs/model_tradeoffs.md)
 
 ## Architecture
 
@@ -16,16 +41,6 @@ Flickr8k images + captions
   → React dashboard + Gradio demo
   → Recall@K / MRR / nDCG / latency / failure analysis
 ```
-
-## Key Results
-
-| Metric | Value |
-| --- | ---: |
-| Recall@10 | 0.641925 |
-| MRR | 0.408194 |
-| nDCG@10 | 0.463864 |
-| Random Recall@10 | 0.0012 |
-| p95 end-to-end latency | 14.7 ms |
 
 ## Recommendation Modes
 
