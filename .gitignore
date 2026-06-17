@@ -45,3 +45,4 @@ reports/*.svg
 *.ipynb_checkpoints/
 coverage.xml
 .coverage
+htmlcov/
