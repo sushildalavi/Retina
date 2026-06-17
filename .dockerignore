@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Large data and model artifacts (mounted at runtime)
+data/
+models/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+
+# Git
+.git/
+.gitignore
+
+# Docs and reports
+docs/
+reports/
+examples/
+
+# Misc
+.env
+.env.*
+*.log
