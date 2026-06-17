@@ -4,9 +4,21 @@ import { resolveImageUrl } from '../api';
 interface ResultsGridProps {
   results: RecommendationResult[];
   emptyLabel: string;
+  selectedKey?: string | null;
+  onSelect?: (result: RecommendationResult) => void;
 }
 
-export function ResultsGrid({ results, emptyLabel }: ResultsGridProps) {
+function describeMetadata(metadata: Record<string, unknown>) {
+  return Object.entries(metadata)
+    .filter(([, value]) => value != null && value !== "")
+    .slice(0, 3)
+    .map(([key, value]) => {
+      const rendered = Array.isArray(value) ? value.join(", ") : String(value);
+      return { key, rendered };
+    });
+}
+
+export function ResultsGrid({ results, emptyLabel, selectedKey, onSelect }: ResultsGridProps) {
   if (!results.length) {
     return <div className="empty-state">{emptyLabel}</div>;
   }
@@ -15,8 +27,15 @@ export function ResultsGrid({ results, emptyLabel }: ResultsGridProps) {
     <div className="results-grid">
       {results.map((result) => {
         const imageUrl = resolveImageUrl(result.image_url);
+        const selected = selectedKey === `${result.image_id}-${result.rank}`;
+        const metadata = describeMetadata(result.metadata);
         return (
-          <article className="result-card" key={`${result.image_id}-${result.rank}`}>
+          <button
+            type="button"
+            className={`result-card ${selected ? 'result-card--selected' : ''}`}
+            key={`${result.image_id}-${result.rank}`}
+            onClick={() => onSelect?.(result)}
+          >
             <div className="result-card__image-wrap">
               {imageUrl ? (
                 <img className="result-card__image" src={imageUrl} alt={result.caption || result.image_id} loading="lazy" />
@@ -37,9 +56,14 @@ export function ResultsGrid({ results, emptyLabel }: ResultsGridProps) {
               <div className="result-card__meta">
                 <span className="chip">Image {result.image_id}</span>
                 {result.captions?.[0] ? <span className="chip chip--muted">{result.captions[0]}</span> : null}
+                {metadata.map((entry) => (
+                  <span key={entry.key} className="chip chip--muted">
+                    {entry.key}: {entry.rendered}
+                  </span>
+                ))}
               </div>
             </div>
-          </article>
+          </button>
         );
       })}
     </div>

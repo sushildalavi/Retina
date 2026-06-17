@@ -1,22 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ApiError, getHealth, getMetadata, recommendImage, recommendProfile, recommendText } from './api';
+import {
+  ApiError,
+  getHealth,
+  getMetadata,
+  recommendImage,
+  recommendProfile,
+  recommendText,
+  resolveImageUrl,
+} from './api';
 import { ResultsGrid } from './components/ResultsGrid';
 import type {
   HealthResponse,
   ImageRecommendationResponse,
   ProfileRecommendationResponse,
+  RecommendationResult,
   ServiceMetadata,
   TextRecommendationResponse,
 } from './types';
 
 type NavId = 'overview' | 'text' | 'image' | 'profile';
+type SearchKind = 'text' | 'image' | 'profile';
 
 const DEFAULT_TEXT_QUERY = 'a dog jumping through water';
 const DEFAULT_IMAGE_ID = '3795';
 const DEFAULT_PROFILE_TEXT = 'bicycle racing\nmotocross jump';
 const DEFAULT_LIKED_IDS = '3795, 5529';
 const DEFAULT_TOP_K = 6;
+const HISTORY_KEY = 'retina-search-history';
 
 const NAV_ITEMS: Array<{ id: NavId; label: string }> = [
   { id: 'overview', label: 'Overview' },
@@ -24,6 +35,15 @@ const NAV_ITEMS: Array<{ id: NavId; label: string }> = [
   { id: 'image', label: 'Similar Images' },
   { id: 'profile', label: 'Profile Recommendations' },
 ];
+
+type SearchHistoryItem = {
+  id: string;
+  kind: SearchKind;
+  label: string;
+  detail: string;
+  topK: number;
+  createdAt: string;
+};
 
 const DEMO_SERVICE: ServiceMetadata = {
   config_path: 'configs/retina.yaml',
@@ -44,12 +64,42 @@ function formatInteger(value: number) {
   return new Intl.NumberFormat('en-US').format(Math.round(value));
 }
 
+function formatMetadataValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item)).join(', ');
+  }
+  if (value && typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function describeResult(result: RecommendationResult) {
+  const fields: Array<{ label: string; value: string }> = [
+    { label: 'Rank', value: `#${result.rank}` },
+    { label: 'Score', value: result.score.toFixed(4) },
+    { label: 'Image', value: result.image_id },
+  ];
+
+  if (result.captions?.[0]) {
+    fields.push({ label: 'Matched caption', value: result.captions[0] });
+  }
+
+  const metadataEntries = Object.entries(result.metadata ?? {})
+    .filter(([, value]) => value != null && value !== '')
+    .slice(0, 4)
+    .map(([key, value]) => ({ label: key, value: formatMetadataValue(value) }));
+
+  return [...fields, ...metadataEntries];
+}
+
 function App() {
   const [nav, setNav] = useState<NavId>('overview');
   const [service, setService] = useState<ServiceMetadata | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [startupNotice, setStartupNotice] = useState<string | null>(null);
   const [motionEnabled, setMotionEnabled] = useState(true);
+
   const [textQuery, setTextQuery] = useState(DEFAULT_TEXT_QUERY);
   const [textTopK, setTextTopK] = useState(DEFAULT_TOP_K);
   const [textResult, setTextResult] = useState<TextRecommendationResponse | null>(null);
@@ -69,37 +119,59 @@ function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  const [selectedResult, setSelectedResult] = useState<RecommendationResult | null>(null);
+  const [history, setHistory] = useState<SearchHistoryItem[]>([]);
+
   const textRef = useRef<HTMLElement | null>(null);
   const imageRef = useRef<HTMLElement | null>(null);
   const profileRef = useRef<HTMLElement | null>(null);
 
   const loadServiceState = async () => {
-      const [healthResponse, metadataResponse] = await Promise.allSettled([getHealth(), getMetadata()]);
+    const [healthResponse, metadataResponse] = await Promise.allSettled([getHealth(), getMetadata()]);
 
-      if (healthResponse.status === 'fulfilled') setHealth(healthResponse.value);
-      if (metadataResponse.status === 'fulfilled') setService(metadataResponse.value.service);
+    if (healthResponse.status === 'fulfilled') setHealth(healthResponse.value);
+    if (metadataResponse.status === 'fulfilled') setService(metadataResponse.value.service);
 
-      if (healthResponse.status === 'rejected' || metadataResponse.status === 'rejected') {
-        const reason =
-          healthResponse.status === 'rejected'
-            ? healthResponse.reason
-            : metadataResponse.status === 'rejected'
-              ? metadataResponse.reason
-              : null;
-        const message = reason instanceof ApiError ? reason.message : 'Local service unavailable';
-        setStartupNotice(`Preview mode is active until the local service responds. (${message})`);
-      } else {
-        setStartupNotice(null);
-      }
+    if (healthResponse.status === 'rejected' || metadataResponse.status === 'rejected') {
+      const reason =
+        healthResponse.status === 'rejected'
+          ? healthResponse.reason
+          : metadataResponse.status === 'rejected'
+            ? metadataResponse.reason
+            : null;
+      const message = reason instanceof ApiError ? reason.message : 'Local service unavailable';
+      setStartupNotice(`Preview mode is active until the local service responds. (${message})`);
+    } else {
+      setStartupNotice(null);
+    }
   };
 
   useEffect(() => {
     void loadServiceState();
+    try {
+      const stored = window.localStorage.getItem(HISTORY_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as SearchHistoryItem[];
+        setHistory(Array.isArray(parsed) ? parsed.slice(0, 8) : []);
+      }
+    } catch {
+      setHistory([]);
+    }
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 8)));
+    } catch {
+      // ignore storage failures in private browsing modes
+    }
+  }, [history]);
 
   const displayService = service ?? DEMO_SERVICE;
   const isLive = Boolean(service && health?.ready);
   const adapterReady = Boolean(health?.checks.adapter);
+
+  const selectedResultKey = selectedResult ? `${selectedResult.image_id}-${selectedResult.rank}` : null;
 
   const jumpTo = (section: NavId) => {
     setNav(section);
@@ -111,6 +183,19 @@ function App() {
     } else if (section === 'profile') {
       profileRef.current?.scrollIntoView({ behavior, block: 'start' });
     }
+  };
+
+  const recordSearch = (kind: SearchKind, label: string, detail: string, topK: number, results?: RecommendationResult[]) => {
+    const item: SearchHistoryItem = {
+      id: `${kind}-${Date.now()}`,
+      kind,
+      label,
+      detail,
+      topK,
+      createdAt: new Date().toISOString(),
+    };
+    setHistory((prev) => [item, ...prev].slice(0, 8));
+    setSelectedResult(results?.[0] ?? null);
   };
 
   const resetWorkspace = () => {
@@ -131,14 +216,17 @@ function App() {
     setProfileResult(null);
     setProfileError(null);
     setProfileLoading(false);
+    setSelectedResult(null);
   };
 
   const runTextSearch = async (query: string, topK: number) => {
     setTextError(null);
     setTextLoading(true);
     try {
-      setTextResult(await recommendText(query, topK));
+      const result = await recommendText(query, topK);
+      setTextResult(result);
       setNav('text');
+      recordSearch('text', query, `${topK} results`, topK, result.results);
     } catch (error) {
       setTextError(error instanceof ApiError ? error.message : 'Text recommendation failed');
     } finally {
@@ -150,8 +238,10 @@ function App() {
     setImageError(null);
     setImageLoading(true);
     try {
-      setImageResult(await recommendImage(id, topK));
+      const result = await recommendImage(id, topK);
+      setImageResult(result);
       setNav('image');
+      recordSearch('image', `Image ${id}`, `${topK} neighbors`, topK, result.results);
     } catch (error) {
       setImageError(error instanceof ApiError ? error.message : 'Image recommendation failed');
     } finally {
@@ -163,8 +253,10 @@ function App() {
     setProfileError(null);
     setProfileLoading(true);
     try {
-      setProfileResult(await recommendProfile(text, liked, topK));
+      const result = await recommendProfile(text, liked, topK);
+      setProfileResult(result);
       setNav('profile');
+      recordSearch('profile', `${text.length} interests`, `${liked.length} liked images`, topK, result.results);
     } catch (error) {
       setProfileError(error instanceof ApiError ? error.message : 'Profile recommendation failed');
     } finally {
@@ -195,12 +287,15 @@ function App() {
     await runProfileSearch(textQueries, likedImageIds, profileTopK);
   };
 
+  const inspectorItems = selectedResult ? describeResult(selectedResult) : [];
+
   return (
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
           <div className="brand__mark">Retina</div>
         </div>
+
         <nav className="nav" aria-label="Retina sections">
           {NAV_ITEMS.map((item) => (
             <button
@@ -267,11 +362,19 @@ function App() {
           <section className="hero" id="overview">
             <div className="hero__copy">
               <div className="eyebrow">Overview</div>
-              <h1>Search by intent, get visually relevant results</h1>
+              <h1>Search by intent, inspect why it matched, and compare local models.</h1>
               <p>
-                Retina is a full-stack visual discovery app for catalog search and asset review. It helps users
-                find the right image fast from text, image, or profile-style queries.
+                Retina is a local visual discovery app for text, image, and profile search over a frozen CLIP
+                backbone. The result inspector surfaces score, rank, and metadata so demos feel explainable.
               </p>
+              <div className="hero__actions">
+                <button className="primary-button" type="button" onClick={() => void runTextSearch(DEFAULT_TEXT_QUERY, textTopK)}>
+                  Run sample query
+                </button>
+                <button className="secondary-button" type="button" onClick={() => jumpTo('text')}>
+                  Open text search
+                </button>
+              </div>
             </div>
 
             <aside className="hero__sidecard">
@@ -372,162 +475,281 @@ function App() {
             </article>
           </section>
 
-          <section className="workflow" id="text" ref={textRef}>
-            <div className="workflow__header">
-              <div>
-                <div className="eyebrow">Text Recommendations</div>
-                <h2>Search the catalog with natural language</h2>
-              </div>
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={() => {
-                  setTextQuery(DEFAULT_TEXT_QUERY);
-                  void runTextSearch(DEFAULT_TEXT_QUERY, textTopK);
-                }}
-              >
-                Run example query
-              </button>
-            </div>
+          <div className="query-layout">
+            <div className="query-layout__main">
+              <section className="workflow" id="text" ref={textRef}>
+                <div className="workflow__header">
+                  <div>
+                    <div className="eyebrow">Text Recommendations</div>
+                    <h2>Search the catalog with natural language</h2>
+                  </div>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => {
+                      setTextQuery(DEFAULT_TEXT_QUERY);
+                      void runTextSearch(DEFAULT_TEXT_QUERY, textTopK);
+                    }}
+                  >
+                    Run example query
+                  </button>
+                </div>
 
-            <form className="query-card" onSubmit={onTextSubmit}>
-              <div className="query-field">
-                <span className="query-field__icon">⌕</span>
-                <input value={textQuery} onChange={(event) => setTextQuery(event.target.value)} />
-                <button className="icon-action" type="submit" disabled={textLoading}>
-                  {textLoading ? 'Searching…' : 'Search'}
-                  <span>→</span>
-                </button>
-              </div>
-              <div className="query-grid">
-                <label>
-                  <span>Top-k</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={textTopK}
-                    onChange={(event) => setTextTopK(Number(event.target.value))}
-                  />
-                </label>
-                <label>
-                  <span>Search mode</span>
-                  <input value="text-to-image" readOnly />
-                </label>
-              </div>
-            </form>
+                <form className="query-card" onSubmit={onTextSubmit}>
+                  <div className="query-field">
+                    <span className="query-field__icon">⌕</span>
+                    <input value={textQuery} onChange={(event) => setTextQuery(event.target.value)} />
+                    <button className="icon-action" type="submit" disabled={textLoading}>
+                      {textLoading ? 'Searching…' : 'Search'}
+                      <span>→</span>
+                    </button>
+                  </div>
+                  <div className="query-grid">
+                    <label>
+                      <span>Top-k</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={textTopK}
+                        onChange={(event) => setTextTopK(Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span>Search mode</span>
+                      <input value="text-to-image" readOnly />
+                    </label>
+                  </div>
+                </form>
 
-            {textError ? <div className="banner banner--error">{textError}</div> : null}
-            <ResultsGrid results={textResult?.results || []} emptyLabel="Run a query to see image recommendations." />
-          </section>
-
-          <section className="workflow workflow--compact" id="image" ref={imageRef}>
-            <div className="workflow__header">
-              <div>
-                <div className="eyebrow">Similar Images</div>
-                <h2>Search from an example image</h2>
-              </div>
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={() => {
-                  setImageId(DEFAULT_IMAGE_ID);
-                  void runImageSearch(DEFAULT_IMAGE_ID, imageTopK);
-                }}
-              >
-                Run sample image
-              </button>
-            </div>
-
-            <form className="compact-form" onSubmit={onImageSubmit}>
-              <label>
-                <span>Image ID</span>
-                <input value={imageId} onChange={(event) => setImageId(event.target.value)} />
-              </label>
-              <label>
-                <span>Top-k</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={imageTopK}
-                  onChange={(event) => setImageTopK(Number(event.target.value))}
+                {textError ? <div className="banner banner--error">{textError}</div> : null}
+                <ResultsGrid
+                  results={textResult?.results || []}
+                  emptyLabel="Run a query to see image recommendations."
+                  selectedKey={selectedResultKey}
+                  onSelect={(result) => setSelectedResult(result)}
                 />
-              </label>
-              <button className="primary-button" type="submit" disabled={imageLoading}>
-                {imageLoading ? 'Searching…' : 'Find similar'}
-              </button>
-            </form>
+              </section>
 
-            {imageError ? <div className="banner banner--error">{imageError}</div> : null}
-            <ResultsGrid results={imageResult?.results || []} emptyLabel="Run an image lookup to see neighbors." />
-          </section>
+              <section className="workflow workflow--compact" id="image" ref={imageRef}>
+                <div className="workflow__header">
+                  <div>
+                    <div className="eyebrow">Similar Images</div>
+                    <h2>Search from an example image</h2>
+                  </div>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => {
+                      setImageId(DEFAULT_IMAGE_ID);
+                      void runImageSearch(DEFAULT_IMAGE_ID, imageTopK);
+                    }}
+                  >
+                    Run sample image
+                  </button>
+                </div>
 
-          <section className="workflow" id="profile" ref={profileRef}>
-            <div className="workflow__header">
-              <div>
-                <div className="eyebrow">Profile Recommendations</div>
-                <h2>Combine interests and liked images into one search</h2>
-              </div>
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={() => {
-                  setProfileText(DEFAULT_PROFILE_TEXT);
-                  setLikedIds(DEFAULT_LIKED_IDS);
-                  void runProfileSearch(
-                    DEFAULT_PROFILE_TEXT.split('\n').map((line) => line.trim()).filter(Boolean),
-                    DEFAULT_LIKED_IDS.split(/[, \n]/).map((line) => line.trim()).filter(Boolean),
-                    profileTopK,
-                  );
-                }}
-              >
-                Run sample profile
-              </button>
+                <form className="compact-form" onSubmit={onImageSubmit}>
+                  <label>
+                    <span>Image ID</span>
+                    <input value={imageId} onChange={(event) => setImageId(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Top-k</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={imageTopK}
+                      onChange={(event) => setImageTopK(Number(event.target.value))}
+                    />
+                  </label>
+                  <button className="primary-button" type="submit" disabled={imageLoading}>
+                    {imageLoading ? 'Searching…' : 'Find similar'}
+                  </button>
+                </form>
+
+                {imageError ? <div className="banner banner--error">{imageError}</div> : null}
+                <ResultsGrid
+                  results={imageResult?.results || []}
+                  emptyLabel="Run an image lookup to see neighbors."
+                  selectedKey={selectedResultKey}
+                  onSelect={(result) => setSelectedResult(result)}
+                />
+              </section>
+
+              <section className="workflow" id="profile" ref={profileRef}>
+                <div className="workflow__header">
+                  <div>
+                    <div className="eyebrow">Profile Recommendations</div>
+                    <h2>Combine interests and liked images into one search</h2>
+                  </div>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => {
+                      setProfileText(DEFAULT_PROFILE_TEXT);
+                      setLikedIds(DEFAULT_LIKED_IDS);
+                      void runProfileSearch(
+                        DEFAULT_PROFILE_TEXT.split('\n').map((line) => line.trim()).filter(Boolean),
+                        DEFAULT_LIKED_IDS.split(/[, \n]/).map((line) => line.trim()).filter(Boolean),
+                        profileTopK,
+                      );
+                    }}
+                  >
+                    Run sample profile
+                  </button>
+                </div>
+
+                <div className="query-shell query-shell--profile">
+                  <form className="query-card" onSubmit={onProfileSubmit}>
+                    <label>
+                      <span>Text interests, one per line</span>
+                      <textarea value={profileText} onChange={(event) => setProfileText(event.target.value)} rows={5} />
+                    </label>
+                    <label>
+                      <span>Liked image IDs</span>
+                      <textarea value={likedIds} onChange={(event) => setLikedIds(event.target.value)} rows={3} />
+                    </label>
+                    <label>
+                      <span>Top-k</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={profileTopK}
+                        onChange={(event) => setProfileTopK(Number(event.target.value))}
+                      />
+                    </label>
+                    <button className="primary-button" type="submit" disabled={profileLoading}>
+                      {profileLoading ? 'Building profile…' : 'Recommend'}
+                    </button>
+                  </form>
+
+                  <aside className="query-side">
+                    <article className="why-card">
+                      <div className="why-card__title">Profile builder</div>
+                      <div className="why-item">
+                        <div className="why-item__dot" />
+                        <div>
+                          <strong>Vector blend</strong>
+                          <p>Text interests and liked IDs are merged into one local profile query.</p>
+                        </div>
+                      </div>
+                      <div className="why-item">
+                        <div className="why-item__dot" />
+                        <div>
+                          <strong>Deterministic results</strong>
+                          <p>Results are scored locally against the same FAISS index used for text search.</p>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article className="why-card">
+                      <div className="why-card__title">Local history</div>
+                      {history.length > 0 ? (
+                        <div className="history-list">
+                          {history.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className="history-item"
+                              onClick={() => {
+                                if (item.kind === 'text') {
+                                  setTextQuery(item.label);
+                                  jumpTo('text');
+                                } else if (item.kind === 'image') {
+                                  const image = item.label.replace(/^Image\s+/i, '');
+                                  setImageId(image);
+                                  jumpTo('image');
+                                } else {
+                                  jumpTo('profile');
+                                }
+                              }}
+                            >
+                              <div>
+                                <strong>{item.label}</strong>
+                                <p>{item.detail}</p>
+                              </div>
+                              <span>{item.kind}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="why-card__empty">Your recent searches will appear here.</p>
+                      )}
+                    </article>
+                  </aside>
+                </div>
+
+                {profileError ? <div className="banner banner--error">{profileError}</div> : null}
+                <ResultsGrid
+                  results={profileResult?.results || []}
+                  emptyLabel="Run a profile query to see blended recommendations."
+                  selectedKey={selectedResultKey}
+                  onSelect={(result) => setSelectedResult(result)}
+                />
+              </section>
             </div>
 
-            <div className="query-shell query-shell--profile">
-              <form className="query-card" onSubmit={onProfileSubmit}>
-                <label>
-                  <span>Text interests, one per line</span>
-                  <textarea value={profileText} onChange={(event) => setProfileText(event.target.value)} rows={5} />
-                </label>
-                <label>
-                  <span>Liked image IDs</span>
-                  <textarea value={likedIds} onChange={(event) => setLikedIds(event.target.value)} rows={3} />
-                </label>
-                <label>
-                  <span>Top-k</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={profileTopK}
-                    onChange={(event) => setProfileTopK(Number(event.target.value))}
-                  />
-                </label>
-                <button className="primary-button" type="submit" disabled={profileLoading}>
-                  {profileLoading ? 'Building profile…' : 'Recommend'}
-                </button>
-              </form>
-
-              <aside className="query-side">
-                <article className="why-card">
-                  <div className="why-card__title">Profile builder</div>
-                  <div className="why-item">
-                    <div className="why-item__dot" />
-                    <div>
-                      <strong>Vector blend</strong>
-                      <p>Average the entered text and liked-image embeddings into one recommendation vector.</p>
+            <aside className="query-side query-side--inspector">
+              <article className="why-card why-card--inspector">
+                <div className="why-card__title">Result inspector</div>
+                {selectedResult ? (
+                  <div className="inspector">
+                    <div className="inspector__media">
+                      {resolveImageUrl(selectedResult.image_url) ? (
+                        <img
+                          src={resolveImageUrl(selectedResult.image_url) ?? ''}
+                          alt={selectedResult.caption || selectedResult.image_id}
+                          onError={(event) => {
+                            (event.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="inspector__fallback">No preview available</div>
+                      )}
+                    </div>
+                    <div className="inspector__meta">
+                      <div className="result-card__topline">
+                        <span>#{selectedResult.rank}</span>
+                        <span className="result-card__score">{selectedResult.score.toFixed(3)}</span>
+                      </div>
+                      <h3>{selectedResult.caption || selectedResult.image_id}</h3>
+                      <p className="result-card__reason">{selectedResult.recommendation_reason}</p>
+                    </div>
+                    <dl className="inspector__facts">
+                      {inspectorItems.map((item) => (
+                        <div key={item.label}>
+                          <dt>{item.label}</dt>
+                          <dd>{item.value}</dd>
+                        </div>
+                      ))}
+                      {selectedResult.image_path ? (
+                        <div>
+                          <dt>Image path</dt>
+                          <dd>{selectedResult.image_path}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    <div className="inspector__chips">
+                      <span className="chip">Image {selectedResult.image_id}</span>
+                      {selectedResult.index_position != null ? (
+                        <span className="chip chip--muted">Index {selectedResult.index_position}</span>
+                      ) : null}
+                      {selectedResult.captions?.[0] ? (
+                        <span className="chip chip--muted">{selectedResult.captions[0]}</span>
+                      ) : null}
                     </div>
                   </div>
-                </article>
-              </aside>
-            </div>
-
-            {profileError ? <div className="banner banner--error">{profileError}</div> : null}
-            <ResultsGrid results={profileResult?.results || []} emptyLabel="Run a profile query to see recommendations." />
-          </section>
+                ) : (
+                  <p className="why-card__empty">
+                    Pick any card from the results grid to inspect why it ranked where it did.
+                  </p>
+                )}
+              </article>
+            </aside>
+          </div>
         </main>
       </div>
     </div>
