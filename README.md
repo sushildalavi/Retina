@@ -1,9 +1,5 @@
 # Retina
 
-## Visual Discovery Platform
-
-A full-stack, Mac-local visual discovery app for quickly finding the right image from a large catalog using text, image, or profile-style intent.
-
 ## Business Need
 
 Retina addresses a common product problem: people waste time manually scanning large image libraries when they really want to search by meaning, not filename.
